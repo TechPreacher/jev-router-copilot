@@ -134,7 +134,8 @@ Next steps:
   Shell:    python3 -I "$JR/jev_copilot.py" on|off|status|reset|model
   Models:   python3 -I "$JR/jev_copilot.py" model <size> <model-id>    (or in chat: jev router model <size> <model-id>)
             changes one size's model and re-renders its agent file in place; 'model' alone shows the table,
-            'models' lists the IDs this CLI knows. Your choices live in $JR/models.json and survive re-installs.
+            'models' lists the models your account can use, grouped by the size they fit (chat: jev router models).
+            Your choices live in $JR/models.json and survive re-installs.
   Remove:   ./uninstall.sh       (with the same COPILOT_HOME, if you set one)
 
 Optional, not written by the installer:
