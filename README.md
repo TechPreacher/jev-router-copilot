@@ -33,7 +33,8 @@ python3 -I ~/.copilot/jev-router/jev_copilot.py model large gpt-6.1-sol
 python3 -I ~/.copilot/jev-router/jev_copilot.py model reset
 ```
 
-or `jev router model large gpt-6.1-sol` in chat. The next session uses it.
+or `jev router model large gpt-6.1-sol` in chat. The next session uses it. `models` lists the models your account
+can use, grouped by the size they fit (GitHub's own lightweight / versatile / powerful categories), so you can pick.
 
 ## Documentation
 
