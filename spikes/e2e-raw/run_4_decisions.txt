@@ -1,0 +1,5 @@
+{"t": "2026-10-30T10:02:00", "route": "everyday", "chars": 389, "size": "everyday", "p": 0.99, "confidence": 0.99, "tokens": 476, "ms": 246.75979200401343}
+{"t": "2026-10-30T10:02:22", "route": "large", "chars": 154, "size": "large", "p": 0.79, "confidence": 0.72, "tokens": 426, "ms": 208.99308400112204}
+{"t": "2026-10-30T10:02:37", "route": "self_unsure", "chars": 1648, "size": "large", "p": 0.58, "confidence": 0.44, "tokens": 690, "ms": 203.7905420002062}
+{"t": "2026-10-30T10:04:11", "route": "hardest", "chars": 177, "size": "hardest", "p": 0.86, "confidence": 0.81, "tokens": 429, "ms": 238.60725000849925}
+{"t": "2026-10-30T10:04:19", "route": "hardest", "chars": 913, "size": "hardest", "p": 0.89, "confidence": 0.85, "tokens": 579, "ms": 224.77216701372527}

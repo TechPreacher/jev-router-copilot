@@ -1,0 +1,54 @@
+== session-store.db ==
+-- 2b369808-ec4e-4789-8e39-87e21a773dd2
+gpt-6.1-sol||user
+claude-haiku-5.5|61eebf2c-6875-4bc0-9087-5cb5a8abf1df|sub-agent
+gpt-6.1-sol||agent
+-- 0a40c7c2-63fd-4b49-9ebf-e7afded3accd
+gpt-6.1-sol||user
+claude-sonnet-5.5|488263ca-623d-46ac-b47b-20a5d2aa041f|sub-agent
+gpt-6.1-sol||agent
+-- 32fbbb81-70d8-4a59-a916-cffecbbf0ffb
+gpt-6.1-sol||user
+gpt-6.1-sol||agent
+claude-opus-5.5|d1bcf523-4bcd-473d-a61d-0556f21795b3|sub-agent
+gpt-6.1-sol||agent
+-- 49056d0f-efaf-4cd1-938e-590aba22ae74
+gpt-6.1-sol||user
+claude-opus-5.5|7e12fbb5-390b-402f-8515-2c86fc332b30|sub-agent
+gpt-6.1-sol||agent
+== schema check ==
+assistant_usage_events      search_index             session_files
+checkpoints                 search_index_config      session_refs
+dynamic_context_items       search_index_content     sessions
+forge_skill_proposals       search_index_data        turns
+forge_trajectory_events     search_index_docsize
+schema_version              search_index_idx
+== agent frontmatter (hardest) ==
+---
+name: jev-hardest
+description: Jev router helper for hardest jobs (strategy, or anything where a wrong call is expensive). Use only when a [jev-router] note in the conversation says to delegate to jev-hardest.
+# Pinned to claude-opus-5.5 with high reasoning effort. claude-fable-5.1 is a valid Copilot model ID, but it is
+# "not available" on the account this was built and tested on (spike S3), so a model-policy: required agent
+# pinned to it would fail. When Fable is available here, set model to claude-fable-5.1 and the footer below
+# to "Claude Fable 5.1". The router's note names this agent, so nothing else changes.
+model: claude-opus-5.5
+reasoningEffort: high
+model-policy: required
+include-custom-instructions: true
+user-invocable: false
+---
+
+You are the hardest-size helper in a model router. The main assistant handed you one job from the user.
+== agent frontmatter (large) ==
+---
+name: jev-large
+description: Jev router helper for large jobs (a multi-step build, research, a full report). Use only when a [jev-router] note in the conversation says to delegate to jev-large.
+model: claude-opus-5.5
+model-policy: required
+include-custom-instructions: true
+user-invocable: false
+---
+
+You are the large-size helper in a model router. The main assistant handed you one job from the user.
+
+- Do the whole job well and return the finished result, ready to show the user.

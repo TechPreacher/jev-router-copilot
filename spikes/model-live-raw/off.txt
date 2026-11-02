@@ -1,0 +1,7 @@
+Jev router: OFF (stats since 2026-10-30 10:00)
+  tiny      -> jev-tiny      Sonnet Tiny Test   5 msg
+  everyday  -> jev-everyday  Claude Sonnet 5.5  4 msg
+  large     -> jev-large     Claude Opus 5.5    2 msg
+  hardest   -> jev-hardest   Claude Opus 5.5    3 msg
+  kept by main model: unsure 1, short reply 0, skipped (secret-looking) 0, Jev error/slow 0
+  Jev: 15 calls, 6672 input tokens, $0.000280 total

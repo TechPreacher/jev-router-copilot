@@ -1,0 +1,2 @@
+Error: Model "definitely-not-a-model" from --model flag is not available.
+exit=1

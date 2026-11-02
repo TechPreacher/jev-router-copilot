@@ -1,0 +1,2 @@
+Error: Model "claude-fable-5.1" from --model flag is not available.
+exit=1

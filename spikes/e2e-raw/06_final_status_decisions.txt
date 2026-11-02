@@ -1,0 +1,63 @@
+== reasoning/agent-config grep (newest log) ==
+653:2026-10-30T09:04:10.416Z [DEBUG] [rust:capi_models] fetched model catalog from CAPI {"count":41,"models":"[{\"billing\":{\"restricted_to\":[\"pro\",\"pro_plus\",\"business\",\"enterprise\",\"max\"],\"token_prices\":{\"batch_size\":1000000,\"default\":{\"cache_read_price\":1,\"cache_write_1h_pric
+1066:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+1210:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+1359:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+1503:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+1633:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+1786:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+1922:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+2090:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+2231:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+2371:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+2517:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+2660:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+2803:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+2946:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+3089:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+3232:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+3375:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+3512:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+3572:    "reasoning_effort": "medium",
+3651:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+3728:    "config_reasoning_effort": "medium",
+3794:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+3871:    "config_reasoning_effort": "medium",
+3937:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+4012:    "config_reasoning_effort": "medium",
+4078:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+4155:    "config_reasoning_effort": "medium",
+4221:    "copilot_cli_compaction_medium_reasoning_effort": "null",
+4299:    "config_reasoning_effort": "medium",
+== final status ==
+Jev router: ON (stats since 2026-10-30 10:00)
+  tiny      -> jev-tiny      Claude Haiku 5.5   1 msg
+  everyday  -> jev-everyday  Claude Sonnet 5.5  2 msg
+  large     -> jev-large     Claude Opus 5.5    1 msg
+  hardest   -> jev-hardest   Claude Opus 5.5    2 msg
+  kept by main model: unsure 1, short reply 0, skipped (secret-looking) 0, Jev error/slow 0
+  Jev: 7 calls, 3414 input tokens, $0.000143 total
+== decisions.log today ==
+{"t": "2026-10-30T10:01:29", "route": "tiny", "chars": 42, "size": "tiny", "p": 1.0, "confidence": 1.0, "tokens": 398, "ms": 308.917541988194}
+{"t": "2026-10-30T10:01:53", "route": "everyday", "chars": 115, "size": "everyday", "p": 0.94, "confidence": 0.92, "tokens": 416, "ms": 234.48470901348628}
+{"t": "2026-10-30T10:02:00", "route": "everyday", "chars": 389, "size": "everyday", "p": 0.99, "confidence": 0.99, "tokens": 476, "ms": 246.75979200401343}
+{"t": "2026-10-30T10:02:22", "route": "large", "chars": 154, "size": "large", "p": 0.79, "confidence": 0.72, "tokens": 426, "ms": 208.99308400112204}
+{"t": "2026-10-30T10:02:37", "route": "self_unsure", "chars": 1648, "size": "large", "p": 0.58, "confidence": 0.44, "tokens": 690, "ms": 203.7905420002062}
+{"t": "2026-10-30T10:04:11", "route": "hardest", "chars": 177, "size": "hardest", "p": 0.86, "confidence": 0.81, "tokens": 429, "ms": 238.60725000849925}
+{"t": "2026-10-30T10:04:19", "route": "hardest", "chars": 913, "size": "hardest", "p": 0.89, "confidence": 0.85, "tokens": 579, "ms": 224.77216701372527}
+== OFF ==
+Jev router: OFF (stats since 2026-10-30 10:00)
+  tiny      -> jev-tiny      Claude Haiku 5.5   1 msg
+  everyday  -> jev-everyday  Claude Sonnet 5.5  2 msg
+  large     -> jev-large     Claude Opus 5.5    1 msg
+  hardest   -> jev-hardest   Claude Opus 5.5    2 msg
+  kept by main model: unsure 1, short reply 0, skipped (secret-looking) 0, Jev error/slow 0
+  Jev: 7 calls, 3414 input tokens, $0.000143 total
+EXIT=0
+Jev router: OFF (stats since 2026-10-30 10:00)
+  tiny      -> jev-tiny      Claude Haiku 5.5   1 msg
+  everyday  -> jev-everyday  Claude Sonnet 5.5  2 msg
+  large     -> jev-large     Claude Opus 5.5    1 msg
+  hardest   -> jev-hardest   Claude Opus 5.5    2 msg
+  kept by main model: unsure 1, short reply 0, skipped (secret-looking) 0, Jev error/slow 0
+  Jev: 7 calls, 3414 input tokens, $0.000143 total

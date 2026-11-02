@@ -1,0 +1,25 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: jev-router-copilot
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: |
+          python3 --version
+          python3 -I -m py_compile files/*.py tests/*.py
+          bash -n install.sh uninstall.sh files/bin/jevcp
+      - name: Offline unit tests
+        run: bash tests/run.sh

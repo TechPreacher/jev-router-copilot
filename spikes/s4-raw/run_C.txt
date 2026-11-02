@@ -1,0 +1,8 @@
+2+2 is 4.
+
+
+
+Changes    +0 -0
+AI Credits 0.22 (8s)
+Tokens     ↑ 33.5k (17.4k cached, 16.1k written) • ↓ 10
+Resume     copilot --resume=c1fdd4f2-148e-41b3-971d-7fdbfe78de1f

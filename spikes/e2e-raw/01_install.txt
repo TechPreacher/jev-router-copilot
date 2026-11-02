@@ -1,0 +1,11 @@
+Installing Jev router into ~/.copilot
+
+Self-test passed (hook is silent while OFF, exit 0).
+Done. Jev router: OFF
+
+Next steps:
+  1. Start Copilot CLI (copilot), or open a Copilot-harness chat in VS Code.
+  2. Type:  jev router on        (also: jev router off | status | reset)
+  Shell:    python3 -I "~/.copilot/jev-router/jev_copilot.py" on|off|status|reset
+  Remove:   ./uninstall.sh       (with the same COPILOT_HOME, if you set one)
+INSTALL_EXIT=0

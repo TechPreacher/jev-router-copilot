@@ -1,0 +1,25 @@
+Installing Jev router into ~/.copilot
+  kept previous jev_copilot.py as jev_copilot.py.bak-20261102-073244
+
+Self-test passed (hook is silent while OFF, exit 0; status line prints 'Jev OFF').
+Done. Jev router: OFF (stats since 2026-10-30 10:00)
+
+Next steps:
+  1. Start Copilot CLI (copilot), or open a Copilot-harness chat in VS Code.
+  2. Type:  jev router on        (also: jev router off | status | reset)
+  Shell:    python3 -I "~/.copilot/jev-router/jev_copilot.py" on|off|status|reset
+  Remove:   ./uninstall.sh       (with the same COPILOT_HOME, if you set one)
+
+Optional, not written by the installer:
+  jevcp (Tier 3): add the bin folder to PATH yourself, for example
+    fish:      fish_add_path "~/.copilot/jev-router/bin"
+    bash/zsh:  export PATH="~/.copilot/jev-router/bin:$PATH"
+  Use:      jevcp "prompt"    or    jevcp -i "prompt"
+
+statusLine: paste into ~/.copilot/settings.json (top level):
+{
+  "statusLine": {
+    "type": "command",
+    "command": "python3 -I \"~/.copilot/jev-router/jev_statusline.py\""
+  }
+}

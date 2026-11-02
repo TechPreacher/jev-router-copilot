@@ -1,0 +1,119 @@
+53:      --model <model>
+54:          Set the AI model to use (use 'auto' to let Copilot pick
+55-          automatically)
+56-      --reasoning-effort <level>
+57-          Set the reasoning effort level [possible values: none, minimal, low, medium, high, xhigh, max]
+58-      --context <tier>
+59-          Set the context window tier (overrides persisted setting) [possible values: default, long_context]
+60-      --auto-tier <preference>
+61-          Set the Auto routing profile (validated against the available catalog)
+62-      --agent <agent>
+63-          Specify a custom agent to use
+64-  -r, --resume [<value>]
+65-          Resume from a previous session (optionally specify existing
+66-          session ID, task ID, ID prefix, or name; name matching is
+67-          exact, case-insensitive)
+68-      --continue
+69-          Resume the most recent session
+70-  -n, --name <name>
+71-          Set a name for the new session
+72-      --session-id <id>
+73-          Resume an existing session or task by ID, or set the UUID
+74-          for a new session
+75-      --connect [<sessionId>]
+76-          Connect directly to a remote session (optionally specify
+77-          session ID or task ID)
+78-      --allow-all-tools
+79-          Allow all tools to run automatically without confirmation;
+80-          required for non-interactive mode. Run `copilot help environment`
+81-          for what COPILOT_ALLOW_ALL accepts and what exact "true" grants [env: COPILOT_ALLOW_ALL=]
+82-      --allow-all-paths
+83-          Disable file path verification and allow access to any path
+84-      --disallow-temp-dir
+--
+168:          Only these tools will be available to the model
+169-      --excluded-tools [<tools>...]
+170:          These tools will not be available to the model
+171-      --secret-env-vars [<vars>...]
+172-          Environment variable names whose values are stripped from
+173-          shell and MCP server environments and redacted from output
+174-          (e.g., --secret-env-vars=MY_KEY,OTHER_KEY)
+175-      --allow-url [<urls>...]
+176-          Allow access to specific URLs or domains
+177-      --deny-url [<urls>...]
+178-          Deny access to specific URLs or domains, takes precedence
+179-          over --allow-url
+180-      --allow-all-urls
+181-          Allow access to all URLs without confirmation
+182-      --allow-all
+183-          Enable all permissions (equivalent to --allow-all-tools
+184-          --allow-all-paths --allow-all-urls)
+185-      --yolo
+186-          Enable all permissions (equivalent to --allow-all-tools
+187-          --allow-all-paths --allow-all-urls)
+188-      --max-autopilot-continues <count>
+189-          Maximum number of continuation messages in autopilot mode [default: 5]
+190-      --mode <mode>
+191-          Set the initial agent mode [possible values: interactive, plan, autopilot]
+192-      --autopilot
+193-          Start in autopilot mode
+194-      --plan
+195-          Start in plan mode (combine with --mode autopilot to
+196-          auto-approve the plan and implement it autonomously)
+197-      --experimental
+198-          Enable experimental features
+199-      --bash-env [<value>]
+200-          Enable BASH_ENV support for bash shells (on|off)
+--
+264:  providers    Custom Model Providers (BYOK)
+265-  sandbox      Command Sandboxing
+266-
+267-Examples:
+268-  # Start interactive mode
+269-  $ copilot
+270-
+271-  # Start interactive mode and automatically execute a prompt
+272-  $ copilot -i "Fix the bug in main.js"
+273-
+274-  # Execute a prompt in non-interactive mode (exits after completion)
+275-  $ copilot -p "Fix the bug in main.js" --allow-all-tools
+276-
+277-  # Trust this checkout's configuration for one prompt-mode session only
+278-  $ copilot --trust-folder -p "Summarize this project"
+279-
+280-  # Enable all permissions with a single flag
+281-  $ copilot -p "Fix the bug in main.js" --allow-all
+282-  $ copilot -p "Fix the bug in main.js" --yolo
+283-
+284:  # Start with a specific model
+285:  $ copilot --model gpt-5.4
+286-
+287-  # Resume the most recent session
+288-  $ copilot --continue
+289-
+290-  # Resume a previous session using session picker
+291-  $ copilot --resume
+292-
+293-  # Resume a specific session by ID
+294-  $ copilot --resume=<session-id>
+295-
+296-  # Name a new session
+297-  $ copilot --name="my feature"
+298-
+299-  # Start a new session with a specific UUID
+300-  $ copilot --session-id=0cb916db-26aa-40f2-86b5-1ba81b225fd2
+301-
+302-  # Resume or attach to an existing session or task by ID
+303-  $ copilot --session-id=<session-or-task-id>
+304-
+305-  # Resume a session by name
+306-  $ copilot --resume="my feature"
+307-
+308-  # Resume a session by ID prefix (7+ hex chars)
+309-  $ copilot --resume=0cb916d
+310-
+311-  # Resume with auto-approval
+312-  $ copilot --allow-all-tools --resume
+313-
+314-  # Allow access to additional directory
+315-  $ copilot --add-dir /home/user/projects

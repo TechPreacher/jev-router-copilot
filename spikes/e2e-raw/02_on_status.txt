@@ -1,0 +1,17 @@
+Jev router: ON (stats since 2026-10-30 10:00)
+  tiny      -> jev-tiny      Claude Haiku 5.5   0 msg
+  everyday  -> jev-everyday  Claude Sonnet 5.5  0 msg
+  large     -> jev-large     Claude Opus 5.5    0 msg
+  hardest   -> jev-hardest   Claude Opus 5.5    0 msg
+  kept by main model: unsure 0, short reply 0, skipped (secret-looking) 0, Jev error/slow 0
+  Jev: 0 calls, 0 input tokens, $0.000000 total
+EXIT=0
+--- status ---
+Jev router: ON (stats since 2026-10-30 10:00)
+  tiny      -> jev-tiny      Claude Haiku 5.5   0 msg
+  everyday  -> jev-everyday  Claude Sonnet 5.5  0 msg
+  large     -> jev-large     Claude Opus 5.5    0 msg
+  hardest   -> jev-hardest   Claude Opus 5.5    0 msg
+  kept by main model: unsure 0, short reply 0, skipped (secret-looking) 0, Jev error/slow 0
+  Jev: 0 calls, 0 input tokens, $0.000000 total
+EXIT=0

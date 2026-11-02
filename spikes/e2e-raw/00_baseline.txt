@@ -1,0 +1,10 @@
+== baseline ==
+~/.copilot/hooks:
+herdr-agent-state.sh
+rtk-rewrite.json
+supacode.json
+-- jev-router dir --
+-- session-state count --
+     322
+-- env key --
+env-key-set
