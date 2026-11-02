@@ -81,6 +81,7 @@ Type these as a normal message. The hook performs the action, and the model repl
 | `jev router model` | the model, effort, policy and label per size |
 | `jev router model <size> <model-id> [--label "Name"] [--effort low\|medium\|high\|none] [--policy required\|preferred]` | change one size and re-render its agent file |
 | `jev router model reset` | back to the defaults: deletes `models.json` and re-renders all four agent files |
+| `jev router models` | the models your account can use, grouped by the size they fit |
 
 From a shell, or with the skill: `python3 -I ~/.copilot/jev-router/jev_copilot.py on|off|status|reset|model ...`, or
 `/jev-router on|off|status|reset|model ...` in chat.
@@ -127,7 +128,7 @@ account is entitled to. Change a size at any time, also after the router is inst
 
 ```bash
 python3 -I ~/.copilot/jev-router/jev_copilot.py model                         # show the table
-python3 -I ~/.copilot/jev-router/jev_copilot.py models                        # model IDs this CLI knows
+python3 -I ~/.copilot/jev-router/jev_copilot.py models                        # models you can use, grouped by size
 python3 -I ~/.copilot/jev-router/jev_copilot.py model large gpt-6.1-sol       # change one size
 python3 -I ~/.copilot/jev-router/jev_copilot.py model hardest claude-opus-5.5 --effort high --policy preferred
 python3 -I ~/.copilot/jev-router/jev_copilot.py model tiny claude-sonnet-5.5 --label "Sonnet for lookups"
@@ -151,10 +152,41 @@ helper fail if the model is unavailable, which the routing note handles by telli
 itself, while `--policy preferred` lets Copilot fall back to another model silently.
 
 Validation is local: the ID must look like a Copilot model ID (lowercase, digits, dots, dashes). Entitlement is not
-checked, because only the CLI knows it at run time: `models` lists what `copilot help config` accepts, and an ID that
-your account lacks (for example `claude-fable-5.1` on the tested account) shows up as a helper failure on first use.
+checked at `model` time, because only the CLI knows it: an ID your account lacks (for example `claude-fable-5.1` on
+the tested account) shows up as a helper failure on first use. `models` tells you beforehand, see below.
 Do not edit the rendered agent files by hand; the next `model` change or re-install rewrites them. Edit the templates
 in `jev-router/agents/` instead if you want to change the helper's instructions.
+
+### Which models fit which size
+
+`models` (or `jev router models` in chat, or `/jev-router models`) lists the models your account can use, grouped by
+the size they fit and sorted by ID, with GitHub's display name, price category, preview flag and the reasoning
+efforts the model supports. The current choice per size is starred:
+
+```
+  tiny (lightweight)
+  * claude-haiku-5.5    Claude Haiku 5.5   price low, effort low/medium/high/xhigh/max
+    gpt-5.6-luna        GPT-5.6 Luna       price low, effort none/low/medium/high/xhigh/max
+  everyday (versatile)
+  * claude-sonnet-5.5   Claude Sonnet 5.5  price medium, effort low/medium/high/xhigh/max
+  large (powerful)
+  * claude-opus-5.5     Claude Opus 5.5    price high, effort low/medium/high/xhigh/max
+    gpt-6.1-sol         GPT-6.1 Sol        price medium, effort low/medium/high/xhigh/max
+  hardest (powerful with reasoning effort high; set it with --effort high)
+  * claude-opus-5.5     ...
+```
+
+The grouping is GitHub's own: the catalog that Copilot CLI fetches at session start tags each model with a
+model-picker category, and `lightweight`, `versatile` and `powerful` map onto tiny, everyday and large. hardest
+repeats the powerful models that support a high reasoning effort. Only models the account is entitled to appear,
+so an ID missing here will fail as a helper. Models the CLI hides from its own picker (legacy GPT-4 variants,
+embeddings) are left out.
+
+The catalog is read from the newest `~/.copilot/logs/process-*.log` that holds one. Copilot CLI writes it only with
+`"logLevel": "all"` in `~/.copilot/settings.json`; without that, `models` falls back to the flat list of IDs that
+`copilot help config` accepts (schema only, no entitlement) and says how to get the grouped one. The entries are as
+old as that log; start a Copilot session to refresh. Nothing is fetched from the network, and the log is only read
+for that one line.
 
 Tested: live on CLI 1.0.105 on 2026-11-02. `model tiny claude-sonnet-5.5 --label "Sonnet Tiny Test"` on the
 installed copy made the next `copilot -p` session run `jev-tiny` on `claude-sonnet-5.5` (`subagent.started` in
@@ -270,9 +302,10 @@ They cover control phrases, OFF, slash and `!`, secrets, follow-ups, the confide
 timeouts and HTTP errors, the marker guard, bad input, the session bound, and the agent and hook files
 (`test_adapter.py`, 18 cases). `test_phase3.py` (23 cases) covers the Tier 2 MCP server over a pipe, the `size` mode and
 `jevcp` with a stub `copilot`, the status line, and an installer round-trip in a temporary `COPILOT_HOME`.
-`test_models.py` (9 cases) covers the `model` command and chat phrase, flags and bad input, `reset`, a broken
-`models.json` (hook fails open, `model` reports), `render-agents`, and an install-then-change-then-reinstall round
-trip on an installed copy.
+`test_models.py` (13 cases) covers the `model` command and chat phrase, flags and bad input, `reset`, a broken
+`models.json` (hook fails open, `model` reports), `render-agents`, an install-then-change-then-reinstall round
+trip on an installed copy, and `models` against a fixture catalog log (grouping, order, newest log, the chat
+phrase, the fallback without a catalog).
 
 End to end, with a real Copilot session (this costs credits, so run it deliberately):
 

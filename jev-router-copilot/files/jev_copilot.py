@@ -16,7 +16,8 @@ Modes:
     jev_copilot.py model                  show the model per size (from models.json, else the defaults)
     jev_copilot.py model <size> <id> ...  change one size's model and re-render its agent file in place
     jev_copilot.py model reset            back to the defaults
-    jev_copilot.py models                 list the model IDs `copilot help config` knows (no entitlement check)
+    jev_copilot.py models                 models your account can use, grouped by the size they fit (from the
+                                          CLI log, needs "logLevel": "all"); else the IDs `copilot help config` knows
     jev_copilot.py render-agents [DIR]    write the four agent files (install.sh uses this)
 
 Hook input (camelCase, spikes S1 and S6): sessionId, prompt, transformedPrompt, cwd, timestamp
@@ -234,7 +235,7 @@ def model_command(args):
         return f"jev router model: {e}", 2
 
 
-def models_available():
+def models_fallback():
     """Model IDs that `copilot help config` lists. Schema-valid only: the account may still lack some of them."""
     try:
         out = subprocess.run(["copilot", "help", "config"], capture_output=True, text=True, timeout=20).stdout
@@ -245,6 +246,108 @@ def models_available():
         return "no model IDs found in `copilot help config` output (format changed?)."
     return ("Model IDs known to this Copilot CLI (schema only; an ID can still be \"not available\" on your "
             "account, which a model-policy: required helper reports as a failure):\n  " + "\n  ".join(ids))
+
+
+# The CLI fetches GitHub's model catalog at session start and, with "logLevel": "all" in settings.json, logs it
+# as one line: `... fetched model catalog from CAPI {"count":N,"models":"[{...}]",...}` (the array is a JSON
+# string). Each entry carries GitHub's own model-picker category, which maps onto the Jev sizes.
+CATALOG_MARK = "fetched model catalog from CAPI "
+CATEGORY_SIZE = {"lightweight": "tiny", "versatile": "everyday", "powerful": "large"}
+HARD_EFFORTS = ("high", "xhigh", "max")  # a "powerful" model with one of these also fits hardest
+MAX_LOG_BYTES = 50_000_000
+
+
+def logs_dir():
+    return os.path.join(copilot_home(), "logs")
+
+
+def catalog_from_logs(logs=None):
+    """The newest model catalog in the CLI logs as {"models": [...], "path": ...}, or None when no log has one."""
+    logs = logs or logs_dir()
+    try:
+        paths = [os.path.join(logs, n) for n in os.listdir(logs) if n.startswith("process-") and n.endswith(".log")]
+        paths.sort(key=os.path.getmtime, reverse=True)
+    except OSError:
+        return None
+    for path in paths[:50]:
+        try:
+            if os.path.getsize(path) > MAX_LOG_BYTES:
+                continue
+            with open(path, encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    i = line.find(CATALOG_MARK)
+                    if i < 0:
+                        continue
+                    try:
+                        obj = json.loads(line[i + len(CATALOG_MARK):])
+                        models = obj["models"]
+                        if isinstance(models, str):
+                            models = json.loads(models)
+                    except (ValueError, TypeError, KeyError):
+                        continue
+                    if isinstance(models, list) and models:
+                        return {"models": models, "path": path}
+        except OSError:
+            continue
+    return None
+
+
+def group_models(models):
+    """Pickable catalog entries by Jev size, alphabetical by ID. hardest repeats the large models that
+    support a high reasoning effort, with the effort to pass."""
+    groups = {size: [] for size in SIZE_NAMES}
+    for m in models:
+        if not isinstance(m, dict) or not m.get("model_picker_enabled") or not isinstance(m.get("id"), str):
+            continue
+        size = CATEGORY_SIZE.get(m.get("model_picker_category"))
+        if size is None:
+            continue
+        supports = (m.get("capabilities") or {}).get("supports") or {}
+        efforts = m.get("supported_reasoning_efforts") or supports.get("reasoning_effort") or []
+        entry = {"id": m["id"], "name": m.get("name") or label_for(m["id"]),
+                 "price": m.get("model_picker_price_category") or "-",
+                 "efforts": [e for e in efforts if isinstance(e, str)], "preview": bool(m.get("preview"))}
+        groups[size].append(entry)
+        if size == "large" and any(e in entry["efforts"] for e in HARD_EFFORTS):
+            groups["hardest"].append(entry)
+    for size in groups:
+        groups[size].sort(key=lambda e: e["id"])
+    return groups
+
+
+GROUP_TITLES = {"tiny": "lightweight", "everyday": "versatile", "large": "powerful",
+                "hardest": "powerful with reasoning effort high; set it with --effort high"}
+
+
+def models_grouped_text(catalog, cfg):
+    groups = group_models(catalog["models"])
+    current = {size: cfg[size]["model"] for size in SIZE_NAMES}
+    width = max([len(e["id"]) for g in groups.values() for e in g] + [10])
+    nwidth = max([len(e["name"]) for g in groups.values() for e in g] + [10])
+    lines = [f"Copilot models your account can use, by Jev size (GitHub's model-picker categories, from "
+             f"{catalog['path']}):"]
+    for size in SIZE_NAMES:
+        lines.append(f"  {size} ({GROUP_TITLES[size]})")
+        if not groups[size]:
+            lines.append("    (none)")
+        for e in groups[size]:
+            mark = "*" if e["id"] == current[size] else " "
+            extra = ", ".join(x for x in (f"price {e['price']}", "preview" if e["preview"] else "",
+                                          "effort " + "/".join(e["efforts"]) if e["efforts"] else "") if x)
+            lines.append(f"  {mark} {e['id']:{width}}  {e['name']:{nwidth}}  {extra}")
+    lines.append("* = current choice for that size. Change: model <size> <model-id> [--effort high] "
+                 "(see `model`). Catalog entries age with the log; start a Copilot session to refresh.")
+    return "\n".join(lines)
+
+
+def models_available():
+    """`models`: entitled models grouped by the size they fit, or the schema ID list when no catalog is logged."""
+    catalog = catalog_from_logs()
+    if catalog is None:
+        return (models_fallback() + "\nNo model catalog found in " + logs_dir() + ". Copilot CLI logs it only with "
+                '"logLevel": "all" in ~/.copilot/settings.json; set that, run one session, and try again for the '
+                "list grouped by size.")
+    return models_grouped_text(catalog, MODELS)
 
 
 # Tier 2 standing rule, sent once per session by the sessionStart hook (mode "session").
@@ -275,6 +378,7 @@ def reset_state():
 
 
 MODEL_PHRASE = "jev router model"
+MODELS_PHRASE = "jev router models"
 
 
 def control_text(prompt):
@@ -282,6 +386,8 @@ def control_text(prompt):
     cmd = prompt.strip().lower().rstrip(".!")
     if cmd in CONTROL:
         return control(CONTROL[cmd])
+    if cmd == MODELS_PHRASE:
+        return models_available()
     if cmd == MODEL_PHRASE or cmd.startswith(MODEL_PHRASE + " "):
         try:
             args = shlex.split(prompt.strip().rstrip(".!")[len(MODEL_PHRASE):])

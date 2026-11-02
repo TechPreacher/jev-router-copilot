@@ -5,6 +5,7 @@ The agent files land in $COPILOT_HOME/agents, so COPILOT_HOME points at the temp
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -186,3 +187,100 @@ class InstalledCopyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def catalog_line(models, count=None):
+    """One Copilot CLI log line in the real shape: the array is a JSON string inside the outer object."""
+    body = json.dumps({"count": count if count is not None else len(models), "models": json.dumps(models),
+                       "dynamic_auto_tiers": False})
+    return "2026-11-02T07:58:59.658Z [DEBUG] [rust:capi_models] fetched model catalog from CAPI " + body
+
+
+def entry(mid, category, efforts=(), name=None, price="medium", picker=True, preview=False):
+    return {"id": mid, "name": name or mid, "vendor": "x", "preview": preview, "model_picker_enabled": picker,
+            "model_picker_category": category, "model_picker_price_category": price,
+            "capabilities": {"supports": {"reasoning_effort": list(efforts)} if efforts else {}}}
+
+
+CATALOG = [
+    entry("gpt-6.1-sol", "powerful", ("low", "medium", "high", "xhigh"), "GPT-6.1 Sol"),
+    entry("claude-opus-5.5", "powerful", ("low", "medium", "high"), "Claude Opus 5.5", "high"),
+    entry("gemini-4-argon", "powerful", ("low", "medium"), "Gemini 4 Argon"),   # no high effort: large only
+    entry("claude-sonnet-5.5", "versatile", ("low", "medium", "high"), "Claude Sonnet 5.5"),
+    entry("grok-4.6", "versatile", (), "Grok 4.6"),
+    entry("gpt-5.6-luna", "lightweight", ("none", "low"), "GPT-5.6 Luna", "low"),
+    entry("claude-haiku-5.5", "lightweight", ("low",), "Claude Haiku 5.5", "low"),
+    entry("mai-code-2-flash", "lightweight", (), "MAI Flash", None, True, True),
+    entry("gpt-4.1", "versatile", (), "GPT-4.1", picker=False),                  # not in the picker: hidden
+    entry("text-embedding-3-small", None, (), "Embedding", picker=False),
+    {"id": 7, "model_picker_enabled": True, "model_picker_category": "powerful"},  # malformed: skipped
+]
+
+
+class ModelsListTests(ModelsBase):
+    def write_log(self, name, *lines):
+        logs = os.path.join(self.home, "logs")
+        os.makedirs(logs, exist_ok=True)
+        path = os.path.join(logs, name)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+        return path
+
+    def test_models_are_grouped_by_size_and_sorted_by_id(self):
+        path = self.write_log("process-1793606325269-57657.log", "2026-11-02T07:58:59.000Z [INFO] session start",
+                              catalog_line(CATALOG), "2026-11-02T07:59:00.000Z [INFO] done")
+        res = self.adapter("models")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        out = res.stdout
+        self.assertIn(f"from {path}", out)
+        ids = [m.group(1) for m in (re.match(r"^  [* ] (\S+)", line) for line in out.splitlines()) if m]
+        self.assertEqual(ids, ["claude-haiku-5.5", "gpt-5.6-luna", "mai-code-2-flash",           # tiny, A-Z
+                               "claude-sonnet-5.5", "grok-4.6",                                   # everyday
+                               "claude-opus-5.5", "gemini-4-argon", "gpt-6.1-sol",                # large
+                               "claude-opus-5.5", "gpt-6.1-sol"])                                 # hardest: high effort
+        for hidden in ("gpt-4.1", "text-embedding-3-small"):
+            self.assertNotIn(hidden, out)
+        # the current choice per size is starred, the rest not
+        self.assertRegex(out, r"\n  \* claude-haiku-5\.5 ")
+        self.assertRegex(out, r"\n    gpt-5\.6-luna ")
+        self.assertEqual(out.count("\n  * "), 4)
+        self.assertIn("mai-code-2-flash   MAI Flash          price -, preview", out)
+        self.assertIn("effort low/medium/high/xhigh", out)
+        self.assertIn("hardest (powerful with reasoning effort high; set it with --effort high)", out)
+
+    def test_star_follows_a_model_change_and_the_newest_log_with_a_catalog_wins(self):
+        self.write_log("process-1000000000000-1.log", catalog_line([entry("old-model", "powerful", ("high",))]))
+        new = self.write_log("process-2000000000000-2.log", catalog_line(CATALOG))
+        self.write_log("process-3000000000000-3.log", "2026-11-02T08:00:00.000Z [INFO] no catalog here",
+                       "2026-11-02T08:00:01.000Z [DEBUG] fetched model catalog from CAPI {not json")
+        os.utime(new, (2000000000, 2000000000))
+        for i, name in enumerate(("process-1000000000000-1.log", "process-3000000000000-3.log")):
+            os.utime(os.path.join(self.home, "logs", name), (1000000000 + i, 1000000000 + i))
+        self.assertEqual(self.adapter("model", "large", "gpt-6.1-sol").returncode, 0)
+        out = self.adapter("models").stdout
+        self.assertIn(f"from {new}", out)
+        self.assertNotIn("old-model", out)
+        self.assertRegex(out, r"\n  \* gpt-6\.1-sol ")
+        self.assertRegex(out, r"\n    claude-opus-5\.5 .*price high")
+
+    def test_chat_phrase_lists_models_without_calling_jev(self):
+        self.write_log("process-1.log", catalog_line(CATALOG))
+        self.set_router(True)
+        before = self.hits()
+        out = self.hook("jev router models")
+        self.assertTrue(out, "the hook must answer the phrase")
+        text = json.loads(out)["modifiedTransformedPrompt"]
+        self.assertTrue(text.startswith(ECHO + "Copilot models your account can use"), text[:120])
+        self.assertIn("  tiny (lightweight)", text)
+        self.assertEqual(self.hits(), before)
+        self.assertEqual(self.adapter("size", "jev router models").stdout.strip(), "local - -")
+
+    def test_without_a_logged_catalog_the_fallback_explains_how_to_get_one(self):
+        res = self.adapter("models")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("No model catalog found in " + os.path.join(self.home, "logs"), res.stdout)
+        self.assertIn('"logLevel": "all"', res.stdout)
+        self.assertNotIn("by Jev size", res.stdout)
+        # a log without a usable catalog line is the same as no log
+        self.write_log("process-1.log", "2026-11-02T08:00:01.000Z [DEBUG] fetched model catalog from CAPI {\"count\":0,\"models\":\"[]\"}")
+        self.assertIn("No model catalog found", self.adapter("models").stdout)

@@ -123,6 +123,12 @@ incl. an install-then-change-then-reinstall round trip in a temp `COPILOT_HOME`.
 "Sonnet Tiny Test"` made the next CLI session run `jev-tiny` on `claude-sonnet-5.5` with the test label in the footer;
 `model reset` restored the defaults. Not live-tested: `--effort`, `--policy preferred`, an unentitled model ID.
 
+Added 2026-11-02: `models` (and `jev router models`) lists the models the account can use grouped by the size they
+fit, alphabetical per group, from GitHub's model-picker categories in the catalog line that Copilot CLI logs at
+`"logLevel": "all"` (`lightweight`/`versatile`/`powerful` -> tiny/everyday/large; hardest = powerful with a high
+reasoning effort). Falls back to the flat `copilot help config` ID list with a hint when no log holds a catalog.
+54 tests.
+
 ## Next step
 
 S1, S3 and S4 done (all pass). S5 is UNVERIFIED: the Claude harness can only be selected in the GUI, so `spikes/S5-result.md` gives a 2-minute manual probe. S6 PASSED: both hooks fire in the VS Code Copilot harness with CLI-identical payloads, `additionalContext` is dropped there (unlike the CLI), and the `userPromptTransformed` rewrite reached the model (reply ended with the injected word, `spikes/S6-result.md`). **Path B (one `~/.copilot` install for CLI and VS Code) is confirmed** and proven end-to-end in both the CLI and the VS Code Copilot harness (`spikes/E2E-cli-result.md`, `spikes/E2E-vscode-result.md`). Only S5 (VS Code Claude harness) remains a manual probe.
