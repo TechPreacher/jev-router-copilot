@@ -50,8 +50,17 @@ if ($route -in @('tiny', 'everyday', 'large', 'hardest')) {
     [Console]::Error.WriteLine("jevcp: $route -> default model")
 }
 
-# The hook would size this prompt a second time inside copilot. Tell it not to.
-$env:JEV_ROUTER_PRESIZED = '1'
-$mode = if ($i) { '-i' } else { '-p' }
-& copilot @extra $mode $text
-exit $LASTEXITCODE
+# The hook would size this prompt a second time inside copilot. Tell it not to. A script shares the calling
+# PowerShell session's environment, so the flag is restored afterwards; otherwise a later plain `copilot` in the
+# same window would skip sizing too.
+$saved = $env:JEV_ROUTER_PRESIZED
+$rc = 1
+try {
+    $env:JEV_ROUTER_PRESIZED = '1'
+    $mode = if ($i) { '-i' } else { '-p' }
+    & copilot @extra $mode $text
+    $rc = $LASTEXITCODE
+} finally {
+    $env:JEV_ROUTER_PRESIZED = $saved
+}
+exit $rc

@@ -227,6 +227,18 @@ class JevcpTests(unittest.TestCase):
         self.assertEqual(res.returncode, 2, res.stdout + res.stderr)
         self.assertFalse(os.path.exists(self.stub_out))
 
+    def test_presized_flag_does_not_leak_into_the_calling_session(self):
+        """Run as a script inside one PowerShell session, as a user would: the flag must be gone afterwards."""
+        self.set_router(False)
+        script = os.path.join(self.layout, "bin", "jevcp.ps1")
+        command = (f"& '{script}' '{SIZE_PROMPT}'; Write-Output \"after=[$env:JEV_ROUTER_PRESIZED]\"; "
+                   "Write-Output \"rc=$LASTEXITCODE\"")
+        res = subprocess.run([PWSH, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command],
+                             capture_output=True, text=True, encoding="utf-8", env=self.env(), timeout=60)
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+        self.assertEqual(self.argv(), ["-p", SIZE_PROMPT, "presized=1"])  # copilot itself saw the flag
+        self.assertIn("after=[]", res.stdout)  # the session did not keep it
+
 
 if __name__ == "__main__":
     unittest.main()
