@@ -8,6 +8,13 @@ Reads state.json and the last line of decisions.log only. Fail-open: any error p
 """
 import json
 import os
+import sys
+
+for _stream in (sys.stdout, sys.stderr):  # the arrow in "Jev → large" must survive a Windows console code page
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError, OSError):
+        pass
 
 HOME = os.environ.get("JEV_ROUTER_HOME") or os.path.dirname(os.path.abspath(__file__))
 SIZES = ("tiny", "everyday", "large", "hardest")

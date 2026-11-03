@@ -14,18 +14,26 @@ tested offline only. The per-size model configuration passed live in the CLI on 
 
 ## Requirements
 
-- macOS (the Keychain fallback is macOS only) or Linux. `python3` with the standard library only.
+- macOS, Linux or Windows. Python 3.8+ with the standard library only (`python3` on macOS and Linux; on Windows
+  `python`, `python3` or `py -3`, whichever works first). Windows also needs PowerShell 7 (`pwsh`) on PATH, which is
+  what Copilot CLI runs hooks with there (`winget install Microsoft.PowerShell`).
 - GitHub Copilot CLI (`copilot`), or VS Code with the Copilot harness, on an account that has
   `claude-haiku-5.5`, `claude-sonnet-5.5` and `claude-opus-5.5`.
-- A TypeSafe API key in `TYPESAFE_API_KEY` (shell environment) or in the macOS Keychain. The Keychain is the
-  reliable choice, because VS Code started from the Dock runs hooks without your shell environment. Store it once
-  (you are prompted for the value, so it stays out of shell history):
+- A TypeSafe API key in `TYPESAFE_API_KEY` (shell environment), in the macOS Keychain, or in the Windows Credential
+  Manager. The key store is the reliable choice, because VS Code started from the Dock or the Start menu runs hooks
+  without your shell environment. Store it once (you are prompted for the value, so it stays out of shell history):
 
   ```bash
-  security add-generic-password -U -a "$USER" -s TYPESAFE_API_KEY -w
+  security add-generic-password -U -a "$USER" -s TYPESAFE_API_KEY -w          # macOS
   ```
 
-  See [SECURITY.md](SECURITY.md) for how the key is read.
+  ```powershell
+  $k = Read-Host 'TypeSafe API key' -AsSecureString                           # Windows (generic credential)
+  cmdkey /generic:TYPESAFE_API_KEY /user:$env:USERNAME /pass:((New-Object System.Net.NetworkCredential('', $k)).Password)
+  ```
+
+  On Linux use the environment variable. `python3 -I ~/.copilot/jev-router/jev_copilot.py key` says where the key was
+  found, never its value. See [SECURITY.md](SECURITY.md) for how the key is read.
 
 ## Install
 
@@ -34,22 +42,33 @@ cd jev-router-copilot   # this project's checkout
 ./install.sh
 ```
 
-`install.sh` writes to `${COPILOT_HOME:-~/.copilot}`:
+```powershell
+cd jev-router-copilot   # Windows: the PowerShell twin, same files, same checks
+.\install.ps1          # or: pwsh -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+`install.sh` (and `install.ps1`) writes to `${COPILOT_HOME:-~/.copilot}`:
 
 | Path | What |
 |---|---|
 | `jev-router/router.py` | the core, verbatim from jev_router |
 | `jev-router/jev_copilot.py` | the adapter: the hook, the shell control, `model` (per-size models), `size` (for `jevcp`) and `session` |
+| `jev-router/jev_compat.py` | Windows shims: a stand-in for `fcntl`, the Credential Manager key, UTF-8 stdio (no-op elsewhere) |
 | `jev-router/models.json` | your per-size model choices (created by the first `model` change; never overwritten by a re-install) |
 | `jev-router/agents/jev-*.agent.md.tmpl` | the agent templates, so `model` can re-render an agent file without the checkout |
 | `jev-router/jev_statusline.py` | status line printer (not registered; see [Fallbacks](#fallbacks-optional)) |
-| `jev-router/bin/jevcp` | Tier 3 wrapper that routes the main model (not on PATH; see [Fallbacks](#fallbacks-optional)) |
-| `hooks/jev-router.json` | the hook file, rendered from the template with absolute paths |
+| `jev-router/bin/jevcp`, `bin/jevcp.ps1` | Tier 3 wrapper that routes the main model, bash and PowerShell (not on PATH; see [Fallbacks](#fallbacks-optional)) |
+| `hooks/jev-router.json` | the hook file, rendered from the template with absolute paths; a `bash` command for macOS and Linux and a `powershell` command for Windows (Copilot picks by OS) |
 | `agents/jev-{tiny,everyday,large,hardest}.agent.md` | the four helper agents, rendered from the templates and `models.json` |
 | `skills/jev-router/SKILL.md` | the `/jev-router on\|off\|status\|reset\|model ...` skill |
 
-With `./install.sh --tier2` it also writes `hooks/jev-router-session.json` and `jev-router/jev_mcp.py`. The installer
-prints the `statusLine` and `mcpServers` snippets and never writes `settings.json`, `mcp-config.json` or your shell rc.
+With `./install.sh --tier2` (`.\install.ps1 -Tier2`) it also writes `hooks/jev-router-session.json` and
+`jev-router/jev_mcp.py`. The installer prints the `statusLine` and `mcpServers` snippets and never writes
+`settings.json`, `mcp-config.json`, your shell rc or your PowerShell profile.
+
+On Windows the hook, the skill and the printed snippets call the interpreter by its full path (the first of `python`,
+`python3`, `py -3` that works), because a bare `python` may hit the Microsoft Store stub and VS Code may not see your
+PATH. After a Python upgrade that changes the path, re-run `.\install.ps1`.
 
 It is idempotent: a changed file is kept as `<name>.bak-<timestamp>` before it is replaced, and an existing on/off
 switch and stats are kept. A fresh install leaves the router OFF. The installer then runs a self-test: a scratch
@@ -60,7 +79,7 @@ Then start Copilot CLI, or open a Copilot-harness chat in VS Code, and type `jev
 ## Uninstall
 
 ```bash
-./uninstall.sh
+./uninstall.sh      # Windows: .\uninstall.ps1
 ```
 
 This removes the hook files (Tier 1 and Tier 2), the four helper agents, the skill, and the `jev-router` directory
@@ -231,6 +250,9 @@ jevcp "Research the main options for migrating our reporting from Postgres to Cl
 jevcp -i "Should we rewrite billing in-house or buy a vendor?"   # interactive session
 ```
 
+On Windows `jevcp.ps1` does the same from PowerShell (`jevcp "prompt"` once the `bin` folder is on PATH; the installer
+prints the line). A prompt that starts with `-` needs `-Prompt "..."`.
+
 Mapping: tiny `claude-haiku-5.5`, everyday `claude-sonnet-5.5`, large `claude-opus-5.5` with `--reasoning-effort medium`,
 hardest `claude-opus-5.5` with `--reasoning-effort high`. Kept by the main model, or router OFF: plain `copilot` on
 your default model. Each `jevcp` run starts a new session, so it sizes every prompt as a first request. Inside the
@@ -249,15 +271,23 @@ and fails open (`Jev ?`). The installer prints this snippet; paste it into `~/.c
 "statusLine": {"type": "command", "command": "python3 -I \"<install dir>/jev_statusline.py\""}
 ```
 
+On Windows the installer prints the command in PowerShell form, `& "C:\...\python.exe" -I "...\jev_statusline.py"`.
+Which shell Copilot uses for the status line on Windows is not documented; if the line stays empty there, try the
+command without the leading `& ` and the quotes around the interpreter.
+
 It replaces the Claude Code `systemMessage` line ("Jev → large (83%)") as a persistent line below the input, not as a
 message in the transcript. It shows the last decision. Its placement and refresh timing are documented but not yet checked in a live
 Copilot session.
 
 ## Limits
 
-- **`python3` must be on your login shell's PATH.** The hook runs a bare `python3`. VS Code (terminal or Dock launch) and
-  the Copilot CLI resolve your login-shell environment, so this is normally true; if routing is silent, put an absolute
-  interpreter path in `~/.copilot/hooks/jev-router.json`.
+- **`python3` must be on your login shell's PATH** (macOS, Linux). The hook runs a bare `python3`. VS Code (terminal or
+  Dock launch) and the Copilot CLI resolve your login-shell environment, so this is normally true; if routing is silent,
+  put an absolute interpreter path in `~/.copilot/hooks/jev-router.json`. On Windows the installer already writes the
+  full interpreter path, so a Python upgrade that moves it needs a re-install.
+- **Windows is offline-tested only.** The installer, the hook, `jevcp.ps1`, the `fcntl` stand-in and the Credential
+  Manager read run in CI on `windows-latest`; no live Copilot session has been checked there yet. Copilot CLI runs hooks
+  on Windows with PowerShell 7, which must be on PATH.
 - **No block.** Copilot hooks cannot swallow a message. A control phrase costs one cheap model turn that echoes
   the status. The status is also in the transcript.
 - **No built-in UI line.** Claude Code's "Jev → large (83%)" line has no Copilot equivalent. The optional status line
@@ -295,7 +325,7 @@ sending prompts to TypeSafe fits your organisation's Copilot data policy.
 Offline unit tests (stdlib `unittest`; a local fake of the Jev API in `tests/fake_jev.py`):
 
 ```bash
-bash tests/run.sh
+bash tests/run.sh          # Windows: pwsh -File tests/run.ps1
 ```
 
 They cover control phrases, OFF, slash and `!`, secrets, follow-ups, the confidence threshold, each size's note,
@@ -305,7 +335,11 @@ timeouts and HTTP errors, the marker guard, bad input, the session bound, and th
 `test_models.py` (13 cases) covers the `model` command and chat phrase, flags and bad input, `reset`, a broken
 `models.json` (hook fails open, `model` reports), `render-agents`, an install-then-change-then-reinstall round
 trip on an installed copy, and `models` against a fixture catalog log (grouping, order, newest log, the chat
-phrase, the fallback without a catalog).
+phrase, the fallback without a catalog). `test_pwsh.py` (8 cases, wherever `pwsh` is on PATH) parses every `.ps1`
+file and runs `install.ps1`, `uninstall.ps1` and `jevcp.ps1` the way `test_phase3.py` runs their bash twins.
+`test_compat.py` (7 cases) covers UTF-8 stdio under an ASCII console, the `key` mode, and, on Windows only, the
+`fcntl` stand-in against a second process and a Credential Manager read of a throwaway credential. The bash-only
+cases are skipped on Windows.
 
 End to end, with a real Copilot session (this costs credits, so run it deliberately):
 
@@ -330,21 +364,26 @@ Nothing in the tests runs `copilot`. The `events.jsonl` check is manual.
 ```
 jev-router-copilot/
   README.md  SECURITY.md  LICENSE
-  install.sh  uninstall.sh
+  install.sh  uninstall.sh       macOS, Linux
+  install.ps1  uninstall.ps1     Windows (PowerShell twins; also run under pwsh elsewhere)
   files/
     router.py                    core, verbatim copy of jev_router/files/router.py
-    jev_copilot.py               adapter: transform hook, on/off/status/reset, model (per-size models), size (jevcp), session (Tier 2)
+    jev_copilot.py               adapter: transform hook, on/off/status/reset, model (per-size models), size (jevcp), session (Tier 2), key
+    jev_compat.py                Windows shims loaded by the adapter: fcntl stand-in, Credential Manager key, UTF-8 stdio
     jev_mcp.py                   Tier 2 stdio MCP server with jev_size (opt-in: install.sh --tier2)
     jev_statusline.py            status line printer (snippet only, not registered)
-    bin/jevcp                    Tier 3 wrapper: size, then copilot --model <id>
-    hooks/jev-router.json.tmpl   hook file template (@JR@ = install dir)
+    bin/jevcp  bin/jevcp.ps1     Tier 3 wrapper: size, then copilot --model <id>
+    hooks/jev-router.json.tmpl   hook file template (@JR@ = install dir, @PY@ = interpreter command; bash and powershell entries)
     hooks/jev-router-session.json.tmpl  Tier 2 sessionStart template
     agents/jev-{tiny,everyday,large,hardest}.agent.md.tmpl   helper agent templates (rendered with models.json)
     skills/jev-router/SKILL.md   /jev-router skill template
   tests/
-    run.sh                       python3 -m unittest discover -s tests -v
+    run.sh  run.ps1              python3 -m unittest discover -s tests -v
     test_adapter.py              offline tests of the hook and the packaging
     test_phase3.py               Tier 2 MCP, size mode, jevcp, status line, installer round-trip
+    test_models.py               per-size models, the models listing
+    test_pwsh.py                 install.ps1, uninstall.ps1, jevcp.ps1 (needs pwsh)
+    test_compat.py               UTF-8 stdio, key mode, Windows lock and Credential Manager shims
     fake_jev.py                  local stand-in for api.typesafe.ai (query-string controlled)
 ```
 

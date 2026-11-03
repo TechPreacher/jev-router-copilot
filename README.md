@@ -16,12 +16,21 @@ cd jev-router-copilot/jev-router-copilot
 ./install.sh
 ```
 
+Windows, from PowerShell:
+
+```powershell
+git clone https://github.com/TechPreacher/jev-router-copilot.git
+cd jev-router-copilot\jev-router-copilot
+.\install.ps1
+```
+
 Then, in a Copilot CLI or VS Code chat: `jev router on`. Every later message is sized by Jev and, when the call is
 confident, handed to `jev-tiny`, `jev-everyday`, `jev-large` or `jev-hardest`. `jev router status` shows the counts,
 `jev router off` stops routing. The installer never edits your `settings.json`.
 
-Requirements: macOS or Linux, `python3` (standard library only), GitHub Copilot CLI or VS Code with Copilot, and a
-TypeSafe API key in `TYPESAFE_API_KEY` or the macOS Keychain.
+Requirements: macOS, Linux or Windows (with PowerShell 7, which Copilot CLI uses for hooks there), Python 3.8+
+(standard library only), GitHub Copilot CLI or VS Code with Copilot, and a TypeSafe API key in `TYPESAFE_API_KEY`,
+the macOS Keychain or the Windows Credential Manager.
 
 ## Pick your models
 
@@ -50,9 +59,10 @@ can use, grouped by the size they fit (GitHub's own lightweight / versatile / po
 
 ## Status
 
-Built and live-tested: the hook (Tier 1), the `jevcp` wrapper, per-size model configuration. Built and
-offline-tested only: the MCP fallback (Tier 2) and the status line. Not built: a VS Code companion extension.
-50 offline unit tests run in CI on Ubuntu and macOS.
+Built and live-tested on macOS: the hook (Tier 1), the `jevcp` wrapper, per-size model configuration. Built and
+offline-tested only: the MCP fallback (Tier 2), the status line, and Windows support (PowerShell installer, `jevcp.ps1`,
+Credential Manager key, hook `powershell` entry). Not built: a VS Code companion extension.
+69 offline unit tests run in CI on Ubuntu, macOS and Windows.
 
 ## Contributing and license
 

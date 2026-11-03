@@ -36,7 +36,7 @@ prompt for the helper agent, and that prompt goes to the helper's model through 
 **`jevcp` passes the prompt on argv.** `jevcp` runs `jev_copilot.py size "<prompt>"` and then `copilot ... -p "<prompt>"`.
 On a shared machine another local user can see the full prompt in `ps` while the process runs. The same applies to any
 `copilot -p` call, but `jevcp` adds a second process that also carries it for a moment. `jevcp` never reads or prints
-`TYPESAFE_API_KEY`. It is not installed on PATH; you add the folder yourself.
+`TYPESAFE_API_KEY`. It is not installed on PATH; you add the folder yourself. `jevcp.ps1` behaves the same on Windows.
 
 **The Tier 2 MCP server (`jev_mcp.py`) runs under the Copilot CLI.** Copilot starts it as your user with
 `python3 -I jev_mcp.py` and talks to it over stdin and stdout. It reads and writes the same `state.json` and
@@ -61,9 +61,19 @@ or stores the key. Store it once, and you are prompted for the value so it stays
 Copilot's hooks can run without your shell environment (for example when VS Code starts from the Dock), which is
 why the Keychain fallback exists. macOS may ask you once to allow `security` to read the item.
 
+On Windows, `jev_compat.py` reads the generic credential named `TYPESAFE_API_KEY` from the Credential Manager with
+`CredReadW` (your user's store, no elevation) when the environment variable is unset, and puts it into the
+environment of the hook process only. Store it once; `Read-Host` keeps the value out of the command history:
+
+    $k = Read-Host 'TypeSafe API key' -AsSecureString
+    cmdkey /generic:TYPESAFE_API_KEY /user:$env:USERNAME /pass:((New-Object System.Net.NetworkCredential('', $k)).Password)
+
+`jev_copilot.py key` reports where the key was found (environment, Keychain, Credential Manager) and never its value.
+
 ## Hooks run as you
 
-`~/.copilot/hooks/jev-router.json` runs `python3 -I .../jev_copilot.py transform` as your user. Whoever can write
+`~/.copilot/hooks/jev-router.json` runs `python3 -I .../jev_copilot.py transform` as your user (on Windows the
+`powershell` entry runs the same script through PowerShell 7 with the interpreter's full path). Whoever can write
 to `~/.copilot/jev-router/` or to the hook file can run code as you on every prompt. Both CLI and VS Code read
 the same `~/.copilot/hooks` folder, so this hook also runs in VS Code Copilot-harness sessions.
 

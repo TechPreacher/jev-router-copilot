@@ -129,6 +129,21 @@ fit, alphabetical per group, from GitHub's model-picker categories in the catalo
 reasoning effort). Falls back to the flat `copilot help config` ID list with a hint when no log holds a catalog.
 54 tests.
 
+## Windows support (2026-11-03, offline-tested only)
+
+The same install now works from PowerShell on Windows: `install.ps1` / `uninstall.ps1` are twins of the bash scripts
+(same files, same self-test, same snippets), `jevcp.ps1` twins `jevcp`, and `tests/run.ps1` twins `run.sh`. The hook
+templates carry a `powershell` entry next to `bash` (Copilot picks by OS; Windows needs PowerShell 7 on PATH), and a
+new `@PY@` placeholder holds the interpreter command: a bare `python3` from `install.sh`, the full interpreter path
+from `install.ps1` (first of `python`, `python3`, `py -3` that works). `router.py` stays verbatim: `files/jev_compat.py`,
+loaded by the adapter before the core, registers an `fcntl` stand-in on Windows (`msvcrt.locking` on the same lock
+file), reads `TYPESAFE_API_KEY` from the Windows Credential Manager (`CredReadW`, generic credential) into the process
+environment, and switches stdio to UTF-8 so a prompt with accents survives the console code page. `jev_copilot.py key`
+reports where the key was found. CI gained a `windows-latest` job; `.gitattributes` forces LF. 69 tests: `test_pwsh.py`
+(installer, uninstaller, jevcp.ps1, parse check; runs on all three runners) and `test_compat.py` (UTF-8, key mode;
+on Windows the lock shim against a second process and a cmdkey round trip). Not done: a live Copilot session on
+Windows, and which shell Copilot uses for `statusLine` there.
+
 ## Next step
 
 S1, S3 and S4 done (all pass). S5 is UNVERIFIED: the Claude harness can only be selected in the GUI, so `spikes/S5-result.md` gives a 2-minute manual probe. S6 PASSED: both hooks fire in the VS Code Copilot harness with CLI-identical payloads, `additionalContext` is dropped there (unlike the CLI), and the `userPromptTransformed` rewrite reached the model (reply ended with the injected word, `spikes/S6-result.md`). **Path B (one `~/.copilot` install for CLI and VS Code) is confirmed** and proven end-to-end in both the CLI and the VS Code Copilot harness (`spikes/E2E-cli-result.md`, `spikes/E2E-vscode-result.md`). Only S5 (VS Code Claude harness) remains a manual probe.

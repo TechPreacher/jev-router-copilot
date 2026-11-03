@@ -231,13 +231,14 @@ class StatusLineTests(Base):
         self.assertEqual(self.status(), "Jev ?")
 
 
+@unittest.skipIf(os.name == "nt", "bash jevcp; see test_pwsh.py for jevcp.ps1")
 class JevcpTests(Base):
     def setUp(self):
         super().setUp()
         self.layout = os.path.join(self.home, "jev-router")  # same shape as an install
         os.makedirs(os.path.join(self.layout, "bin"))
         for src, dst in (("jev_copilot.py", "jev_copilot.py"), ("router.py", "router.py"),
-                         ("jev_statusline.py", "jev_statusline.py")):
+                         ("jev_compat.py", "jev_compat.py"), ("jev_statusline.py", "jev_statusline.py")):
             shutil.copy(os.path.join(FILES, src), os.path.join(self.layout, dst))
         shutil.copy(JEVCP, os.path.join(self.layout, "bin", "jevcp"))
         os.chmod(os.path.join(self.layout, "bin", "jevcp"), 0o755)
@@ -311,6 +312,7 @@ class ModelConsistencyTests(Base):
                     self.assertIn(f"\nmodel: {model}\n", f.read())
 
 
+@unittest.skipIf(os.name == "nt", "bash installer; see test_pwsh.py for install.ps1")
 class InstallerTests(unittest.TestCase):
     def test_tier2_round_trip_leaves_only_what_was_there(self):
         home = tempfile.mkdtemp(prefix="jev-phase3-cp-")

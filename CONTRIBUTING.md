@@ -7,11 +7,13 @@ Thanks for helping improve the Jev model router for GitHub Copilot.
 - Keep the hook fast and silent. Every failure path in `jev-router-copilot/files/jev_copilot.py` must print nothing
   and exit 0 within the 3-second hook timeout. A hook that blocks or slows a message is a bug, even if it is "correct".
 - `files/router.py` is a verbatim copy of [jev_router](https://github.com/TechPreacher/jev_router). Fix routing logic
-  upstream, then copy the file; keep the Copilot-specific code in the adapter.
-- No new dependencies. Stock Python 3 (macOS or Linux), standard library only.
+  upstream, then copy the file; keep the Copilot-specific code in the adapter. Platform shims the core needs (the
+  `fcntl` stand-in on Windows, the Credential Manager key) live in `files/jev_compat.py`, not in a patched core.
+- No new dependencies. Stock Python 3.8+ (macOS, Linux or Windows), standard library only.
 - Never log or store the user's message text. `decisions.log` records route, probability and latency; keep it that way.
-- Scripts are bash with `#!/usr/bin/env bash`, POSIX-style tests (`=`, not `==`). Test `install.sh` and
-  `uninstall.sh` against a temporary `COPILOT_HOME` as well as a real `~/.copilot` that has other hooks.
+- Scripts come in pairs: bash with `#!/usr/bin/env bash` and POSIX-style tests (`=`, not `==`), and a PowerShell twin
+  (`install.ps1`, `uninstall.ps1`, `jevcp.ps1`, `tests/run.ps1`) that must stay in step and run on PowerShell 5.1 and 7.
+  Test the installers against a temporary `COPILOT_HOME` as well as a real `~/.copilot` that has other hooks.
 - Never touch `~/.copilot/settings.json`, `config.json` or `mcp-config.json` from the installer; print snippets instead.
 
 ## Workflow
@@ -22,9 +24,10 @@ Thanks for helping improve the Jev model router for GitHub Copilot.
    cd jev-router-copilot
    python3 -I -m py_compile files/*.py tests/*.py
    bash -n install.sh uninstall.sh files/bin/jevcp
-   bash tests/run.sh
+   bash tests/run.sh          # Windows: pwsh -File tests/run.ps1
    ```
    The tests are offline: a fake Jev server on 127.0.0.1 and a stub `copilot` on PATH. They never run the real CLI.
+   `test_pwsh.py` runs wherever `pwsh` is installed (it is on every GitHub runner) and parses all `.ps1` files.
 3. Try the adapter by hand against a scratch home:
    ```bash
    export COPILOT_HOME=/tmp/jev-test JEV_ROUTER_HOME=/tmp/jev-test/jev-router

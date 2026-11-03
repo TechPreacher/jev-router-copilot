@@ -1,8 +1,8 @@
 # Security
 
 The full policy is in [`jev-router-copilot/SECURITY.md`](jev-router-copilot/SECURITY.md): what the router sends to
-TypeSafe and when it does not, how the API key is read (environment variable or macOS Keychain, never stored by the
-installer), that hooks run as you, and what the installer writes.
+TypeSafe and when it does not, how the API key is read (environment variable, macOS Keychain or Windows Credential
+Manager, never stored by the installer), that hooks run as you, and what the installer writes.
 
 In short: with the router ON, the text of each prompt (first 6000 characters) goes to `https://api.typesafe.ai`
 with your `TYPESAFE_API_KEY`. Slash and `!` commands, short follow-ups and secret-looking text stay local. Nothing

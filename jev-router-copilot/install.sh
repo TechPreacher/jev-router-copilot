@@ -42,13 +42,14 @@ install_file() {
   cp "$src" "$dst"
 }
 
-# render TEMPLATE OUT: replaces @JR@ with the install dir (escaped for JSON). A .json output is validated.
+# render TEMPLATE OUT: replaces @JR@ with the install dir (escaped for JSON) and @PY@ with the interpreter
+# command (a bare python3 here; install.ps1 puts an absolute path there). A .json output is validated.
 render() {
   python3 -I - "$1" "$2" "$JR" <<'PY'
 import json, sys
 src, dst, jr = sys.argv[1:4]
 with open(src, encoding="utf-8") as f:
-    text = f.read().replace("@JR@", json.dumps(jr, ensure_ascii=False)[1:-1])
+    text = f.read().replace("@JR@", json.dumps(jr, ensure_ascii=False)[1:-1]).replace("@PY@", "python3")
 if dst.endswith(".json"):
     text = json.dumps(json.loads(text), indent=2) + "\n"
 with open(dst, "w", encoding="utf-8") as f:
@@ -61,8 +62,10 @@ mkdir -p "$JR/bin" "$CP/agents" "$CP/hooks" "$CP/skills/jev-router"
 
 install_file "$SRC/router.py" "$JR/router.py"
 install_file "$SRC/jev_copilot.py" "$JR/jev_copilot.py"
+install_file "$SRC/jev_compat.py" "$JR/jev_compat.py"
 install_file "$SRC/jev_statusline.py" "$JR/jev_statusline.py"
 install_file "$SRC/bin/jevcp" "$JR/bin/jevcp"
+install_file "$SRC/bin/jevcp.ps1" "$JR/bin/jevcp.ps1"
 chmod 755 "$JR/bin/jevcp" "$JR/jev_statusline.py"
 # Agent files are rendered from templates and models.json (per-size model, effort, policy, label).
 # The templates are installed too, so `jev_copilot.py model ...` can re-render an agent file later without this script.
@@ -136,6 +139,7 @@ Next steps:
             changes one size's model and re-renders its agent file in place; 'model' alone shows the table,
             'models' lists the models your account can use, grouped by the size they fit (chat: jev router models).
             Your choices live in $JR/models.json and survive re-installs.
+  Key:      python3 -I "$JR/jev_copilot.py" key    (says where TYPESAFE_API_KEY was found, never its value)
   Remove:   ./uninstall.sh       (with the same COPILOT_HOME, if you set one)
 
 Optional, not written by the installer:

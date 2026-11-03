@@ -149,6 +149,7 @@ class ModelCommandTests(ModelsBase):
         self.assertEqual({n: open(os.path.join(out_dir, n)).read() for n in os.listdir(out_dir)}, snapshot)
 
 
+@unittest.skipIf(os.name == "nt", "bash installer; see test_pwsh.py for install.ps1")
 class InstalledCopyTests(unittest.TestCase):
     """The user's requirement: models can be changed after the router is installed, without re-installing."""
 

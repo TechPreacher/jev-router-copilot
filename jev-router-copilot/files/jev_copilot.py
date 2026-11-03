@@ -18,7 +18,9 @@ Modes:
     jev_copilot.py model reset            back to the defaults
     jev_copilot.py models                 models your account can use, grouped by the size they fit (from the
                                           CLI log, needs "logLevel": "all"); else the IDs `copilot help config` knows
-    jev_copilot.py render-agents [DIR]    write the four agent files (install.sh uses this)
+    jev_copilot.py key                    where TYPESAFE_API_KEY was found (environment, Keychain, Credential
+                                          Manager), never its value; exit 1 when missing
+    jev_copilot.py render-agents [DIR]    write the four agent files (the installers use this)
 
 Hook input (camelCase, spikes S1 and S6): sessionId, prompt, transformedPrompt, cwd, timestamp
 Hook output: {"modifiedTransformedPrompt": transformedPrompt + "\n\n" + note}, note appended last.
@@ -30,6 +32,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -39,6 +42,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 os.environ.setdefault("JEV_ROUTER_HOME", HERE)
 sys.path.insert(0, HERE)  # python3 -I leaves the script's own directory off sys.path
 try:
+    try:
+        import jev_compat  # Windows: fcntl stand-in, Credential Manager key, UTF-8 stdio. No-op elsewhere.
+        jev_compat.prepare()
+    except ImportError:  # a partial copy without it still works on macOS and Linux
+        jev_compat = None
     import router as core  # the core is used unchanged
 except Exception:
     if len(sys.argv) > 1 and sys.argv[1] == "transform":
@@ -237,8 +245,11 @@ def model_command(args):
 
 def models_fallback():
     """Model IDs that `copilot help config` lists. Schema-valid only: the account may still lack some of them."""
+    exe = shutil.which("copilot")  # resolves copilot.cmd/.exe on Windows too
     try:
-        out = subprocess.run(["copilot", "help", "config"], capture_output=True, text=True, timeout=20).stdout
+        if not exe:
+            raise OSError("copilot not on PATH")
+        out = subprocess.run([exe, "help", "config"], capture_output=True, text=True, timeout=20).stdout
     except (OSError, subprocess.SubprocessError):
         return "copilot CLI not found on PATH; cannot list model IDs."
     ids = sorted(set(re.findall(r"\b(?:claude|gpt|gemini|grok|kimi|o\d)[a-z0-9.\-]*[a-z0-9]", out)))
@@ -509,6 +520,17 @@ def size_line(prompt):
     return f"{route} {entry['model']} {entry['effort'] or '-'}"
 
 
+def key_status():
+    """Where TYPESAFE_API_KEY comes from, never its value: for the installers and for troubleshooting."""
+    source = jev_compat.key_source if jev_compat else None
+    if source is None and core.get_key():
+        source = "macOS Keychain"
+    store = "Windows Credential Manager" if sys.platform == "win32" else "macOS Keychain"
+    if source is None:
+        return f"TYPESAFE_API_KEY: missing (not in the environment, not in the {store})", 1
+    return f"TYPESAFE_API_KEY: found ({source})", 0
+
+
 def main(argv):
     mode = argv[1] if len(argv) > 1 else "status"
     if mode == "transform":
@@ -530,6 +552,10 @@ def main(argv):
     if mode == "models":
         print(models_available())
         return 0
+    if mode == "key":
+        text, rc = key_status()
+        print(text)
+        return rc
     if mode == "render-agents":
         try:
             paths = write_agents(load_models(strict=True), argv[2] if len(argv) > 2 else None)
@@ -538,7 +564,7 @@ def main(argv):
             return 2
         print("\n".join(paths))
         return 0
-    print("usage: jev_copilot.py transform|on|off|status|reset|size \"<prompt>\"|session|model [...]|models|"
+    print("usage: jev_copilot.py transform|on|off|status|reset|size \"<prompt>\"|session|model [...]|models|key|"
           "render-agents [DIR]", file=sys.stderr)
     return 2
 

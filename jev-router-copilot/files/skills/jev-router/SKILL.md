@@ -5,7 +5,7 @@ description: Turn the Jev model router on or off, show its status, reset its sta
 
 Run exactly one shell command and show its output to the user verbatim, with nothing added:
 
-    python3 -I "@JR@/jev_copilot.py" <on|off|status|reset|model [<size> <model-id> [--label "Name"] [--effort low|medium|high|none] [--policy required|preferred]]|model reset|models>
+    @PY@ -I "@JR@/jev_copilot.py" <on|off|status|reset|model [<size> <model-id> [--label "Name"] [--effort low|medium|high|none] [--policy required|preferred]]|model reset|models>
 
 Pass the user's arguments through unchanged; default to `status`. `model` alone shows the current table, `models`
 lists the models the account can use, grouped by the size they fit. Do not do anything else.

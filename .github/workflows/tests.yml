@@ -15,7 +15,7 @@ jobs:
       run:
         working-directory: jev-router-copilot
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Syntax
         run: |
           python3 --version
@@ -23,3 +23,22 @@ jobs:
           bash -n install.sh uninstall.sh files/bin/jevcp
       - name: Offline unit tests
         run: bash tests/run.sh
+
+  test-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: jev-router-copilot
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Syntax
+        run: |
+          python --version
+          python -I -m py_compile (Get-ChildItem files/*.py, tests/*.py | ForEach-Object FullName)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Offline unit tests
+        run: pwsh -NoProfile -File tests/run.ps1
