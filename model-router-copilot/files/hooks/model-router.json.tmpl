@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptTransformed": [
+      {
+        "type": "command",
+        "bash": "python3 -I \"@JR@/router_copilot.py\" transform",
+        "powershell": "@PY@ -I \"@JR@/router_copilot.py\" transform",
+        "timeoutSec": 3
+      }
+    ]
+  }
+}

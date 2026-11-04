@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "python3 -I \"@JR@/router_copilot.py\" session",
+        "powershell": "@PY@ -I \"@JR@/router_copilot.py\" session",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}

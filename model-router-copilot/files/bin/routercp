@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# routercp: size a prompt with the sizing backend, then run Copilot CLI on the model it picked (Tier 3 fallback).
+#   routercp [-i] [--] "prompt"     -i starts an interactive session with the prompt (default: one-shot -p)
+# Routes the main model, which the Tier 1 hook cannot do. When the router is OFF, or the sizing backend keeps the
+# prompt with the main model, copilot runs on its default model. The prompt is passed on argv, so it is
+# visible to other users on this machine through ps while copilot runs.
+# Installed to $COPILOT_HOME/model-router/bin/routercp, next to router_copilot.py.
+set -eu
+
+JR="$(cd "$(dirname "$0")/.." && pwd)"
+mode="-p"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -i) mode="-i"; shift ;;
+    --) shift; break ;;
+    -h|--help) echo 'usage: routercp [-i] [--] "prompt"'; exit 0 ;;
+    -*) echo "routercp: unknown option $1" >&2; exit 2 ;;
+    *) break ;;
+  esac
+done
+[ $# -ge 1 ] || { echo 'usage: routercp [-i] [--] "prompt"' >&2; exit 2; }
+prompt="$*"
+
+# One call sizes the prompt and records the decision. Any failure means: default model.
+line="$(python3 -I "$JR/router_copilot.py" size "$prompt" 2>/dev/null)" || line="local - -"
+read -r route model effort <<EOF
+$line
+EOF
+route="${route:-local}"; model="${model:--}"; effort="${effort:--}"
+
+extra=()
+case "$route" in
+  tiny|everyday|large|hardest)
+    echo "routercp: $route -> $model" >&2
+    extra+=(--model "$model")
+    [ "$effort" = "-" ] || extra+=(--reasoning-effort "$effort") ;;
+  *)
+    echo "routercp: $route -> default model" >&2 ;;
+esac
+
+# The hook would size this prompt a second time inside copilot. Tell it not to.
+export MODEL_ROUTER_PRESIZED=1
+exec copilot ${extra[@]+"${extra[@]}"} "$mode" "$prompt"

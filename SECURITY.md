@@ -1,6 +1,6 @@
 # Security
 
-The full policy is in [`jev-router-copilot/SECURITY.md`](jev-router-copilot/SECURITY.md): what the router sends to
+The full policy is in [`model-router-copilot/SECURITY.md`](model-router-copilot/SECURITY.md): what the router sends to
 TypeSafe and when it does not, how the API key is read (environment variable, macOS Keychain or Windows Credential
 Manager, never stored by the installer), that hooks run as you, and what the installer writes.
 

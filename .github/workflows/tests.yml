@@ -13,14 +13,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        working-directory: jev-router-copilot
+        working-directory: model-router-copilot
     steps:
       - uses: actions/checkout@v5
       - name: Syntax
         run: |
           python3 --version
           python3 -I -m py_compile files/*.py tests/*.py
-          bash -n install.sh uninstall.sh files/bin/jevcp
+          bash -n install.sh uninstall.sh files/bin/routercp
       - name: Offline unit tests
         run: bash tests/run.sh
 
@@ -28,7 +28,7 @@ jobs:
     runs-on: windows-latest
     defaults:
       run:
-        working-directory: jev-router-copilot
+        working-directory: model-router-copilot
         shell: pwsh
     steps:
       - uses: actions/checkout@v5
