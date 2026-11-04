@@ -67,7 +67,8 @@ class KeyModeTests(unittest.TestCase):
         env = {**os.environ, "TYPESAFE_API_KEY": "sk-test-secret-value-123456"}
         res = self.run_key(env)
         self.assertEqual(res.returncode, 0, res.stderr)
-        self.assertEqual(res.stdout.strip(), "TYPESAFE_API_KEY: found (environment)")
+        self.assertEqual(res.stdout.splitlines()[0], "TYPESAFE_API_KEY: found (environment)")
+        self.assertIn("backend: TypeSafe Jev", res.stdout)
         self.assertNotIn("secret-value", res.stdout + res.stderr)
 
     def test_missing_key_exits_1(self):

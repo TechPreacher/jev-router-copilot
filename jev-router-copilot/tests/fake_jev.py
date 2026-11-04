@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Stdlib stand-in for the Jev sizing endpoint (https://api.typesafe.ai/v1/systemone), for offline tests.
+Any path is served, so it also stands in for a Decision-1 deployment (<endpoint>/providers/microsoft/v1/systemone);
+the last request's path and headers are kept in `last_path` and `last_headers` (lower-case names).
 
 Behaviour comes from the query string of each request URL, falling back to server defaults:
     ?size=tiny|everyday|large|hardest   the choice (default tiny)
@@ -39,6 +41,8 @@ class Handler(BaseHTTPRequestHandler):
         with srv.lock:
             srv.hits += 1
             srv.last_body = body
+            srv.last_path = urllib.parse.urlsplit(self.path).path
+            srv.last_headers = {k.lower(): v for k, v in self.headers.items()}
         query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
         q = {k: v[0] for k, v in query.items()}
         size = q.get("size", srv.size)
@@ -50,7 +54,7 @@ class Handler(BaseHTTPRequestHandler):
         if status != 200:
             self.send_error(status)
             return
-        if not self.headers.get("Authorization", "").startswith("Bearer "):
+        if not self.headers.get("Authorization", "").startswith("Bearer ") and not self.headers.get("api-key"):
             self.send_error(401)
             return
         if size not in SIZES:
@@ -77,6 +81,8 @@ def _configure(srv, size, p, delay, status):
     srv.lock = threading.Lock()
     srv.hits = 0
     srv.last_body = None
+    srv.last_path = None
+    srv.last_headers = None
     srv.size, srv.p, srv.delay, srv.status = size, p, delay, status
     srv.url = f"http://127.0.0.1:{srv.server_address[1]}/v1/systemone"
     return srv

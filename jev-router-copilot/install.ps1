@@ -164,22 +164,25 @@ try {
     Write-Output "Self-test passed (hook is silent while OFF, exit 0; status line prints 'Jev OFF')."
     Write-Output ('Done. ' + @($status -split "`n")[0])
 
-    $null = Invoke-Python @('-I', $Adapter, 'key')
+    $keyReport = Invoke-Python @('-I', $Adapter, 'key')
     if ($LastRc -ne 0) {
+        Write-Output $keyReport
         if ($OnWindows) {
             Write-Output @'
 
-NOTE: no TYPESAFE_API_KEY in this shell and none in the Windows Credential Manager, so the router cannot size messages.
-Store it once as a generic credential (you are prompted for the value, so it stays out of the command history):
+NOTE: the active backend lacks a credential (see above), so the router cannot size messages. For TypeSafe, store the
+key once as a generic credential (you are prompted for the value, so it stays out of the command history):
     $k = Read-Host 'TypeSafe API key' -AsSecureString
     cmdkey /generic:TYPESAFE_API_KEY /user:$env:USERNAME /pass:((New-Object System.Net.NetworkCredential('', $k)).Password)
+For an Azure Decision-1 deployment, store JEV_AZURE_ENDPOINT and JEV_AZURE_DEPLOYMENT the same way and run `az login`.
 '@
         } else {
             Write-Output @'
 
-NOTE: no TYPESAFE_API_KEY in this shell and none in the macOS Keychain, so the router cannot size messages.
-Store it once (you are prompted for the value, so it stays out of shell history):
+NOTE: the active backend lacks a credential (see above), so the router cannot size messages. For TypeSafe, store the
+key once (you are prompted for the value, so it stays out of shell history):
     security add-generic-password -U -a "$USER" -s TYPESAFE_API_KEY -w
+For an Azure Decision-1 deployment, store JEV_AZURE_ENDPOINT and JEV_AZURE_DEPLOYMENT the same way and run `az login`.
 '@
         }
     }

@@ -18,8 +18,9 @@ Modes:
     jev_copilot.py model reset            back to the defaults
     jev_copilot.py models                 models your account can use, grouped by the size they fit (from the
                                           CLI log, needs "logLevel": "all"); else the IDs `copilot help config` knows
-    jev_copilot.py key                    where TYPESAFE_API_KEY was found (environment, Keychain, Credential
-                                          Manager), never its value; exit 1 when missing
+    jev_copilot.py key                    which backend is active and where its credentials were found
+                                          (environment, Keychain, Credential Manager), never their values;
+                                          exit 1 when the active backend lacks what it needs
     jev_copilot.py render-agents [DIR]    write the four agent files (the installers use this)
 
 Hook input (camelCase, spikes S1 and S6): sessionId, prompt, transformedPrompt, cwd, timestamp
@@ -410,7 +411,7 @@ def control_text(prompt):
 
 def control(action):
     if action == "on":
-        return core.set_enabled(True)
+        return core.set_enabled(True) + warm_azure()
     if action == "off":
         return core.set_enabled(False)
     if action == "reset":
@@ -471,12 +472,25 @@ def transform(payload):
     return transformed + "\n\n" + note_for(route, info)
 
 
+def warm_azure():
+    """After `on` with the Azure backend: fetch the Entra token now, so the first routed message is not lost.
+    Inside the hook this only starts the background refresh. Returns a note line, or an empty string."""
+    try:
+        if core.backend()[0] != "azure" or core.secret("JEV_AZURE_API_KEY"):
+            return ""
+        core.azure_token()
+        return ""
+    except Exception as e:
+        return f"\n  Azure token: {e}"
+
+
 def record_error(message):
     with core.locked_state() as s:
         s["last_error"] = time.strftime("%H:%M ") + message[:200]
 
 
 def run_transform():
+    core.HOOK_MODE = True  # never wait for an Azure token here; use the cache and refresh in the background
     try:
         payload = json.loads(sys.stdin.read())
         if not isinstance(payload, dict):
@@ -521,14 +535,42 @@ def size_line(prompt):
 
 
 def key_status():
-    """Where TYPESAFE_API_KEY comes from, never its value: for the installers and for troubleshooting."""
-    source = jev_compat.key_source if jev_compat else None
-    if source is None and core.get_key():
-        source = "macOS Keychain"
+    """Which backend is active and where its credentials come from, never their values."""
     store = "Windows Credential Manager" if sys.platform == "win32" else "macOS Keychain"
-    if source is None:
-        return f"TYPESAFE_API_KEY: missing (not in the environment, not in the {store})", 1
-    return f"TYPESAFE_API_KEY: found ({source})", 0
+    found = dict(jev_compat.sources) if jev_compat else {}
+
+    def where(name):
+        if name in found:
+            return found[name]
+        if os.environ.get(name):
+            return "environment"
+        return store if core.secret(name) else None
+
+    kind, _ = core.backend()
+    names = ("TYPESAFE_API_KEY",) if kind == "typesafe" else ("JEV_AZURE_ENDPOINT", "JEV_AZURE_DEPLOYMENT",
+                                                                "JEV_AZURE_API_KEY")
+    lines, rc = [], 0
+    for name in names:
+        source = where(name)
+        optional = name == "JEV_AZURE_API_KEY"
+        if source:
+            lines.append(f"{name}: found ({source})")
+        elif optional:
+            lines.append(f"{name}: not set (an Entra token from the az CLI is used instead)")
+        else:
+            lines.append(f"{name}: missing (not in the environment, not in the {store})")
+            rc = 1
+    if kind == "azure" and not where("JEV_AZURE_API_KEY"):
+        token, expires_on = core.read_token_cache()
+        if token and expires_on > time.time():
+            lines.append("Azure token: cached until " + time.strftime("%Y-%m-%d %H:%M", time.localtime(expires_on)))
+        elif shutil.which("az"):
+            lines.append("Azure token: not cached yet; `jev_copilot.py on` or `router.py azure-token` fetches it")
+        else:
+            lines.append("Azure token: az CLI not on PATH (install it, or set JEV_AZURE_API_KEY)")
+            rc = 1
+    lines.append(f"backend: {core.backend_text()}")
+    return "\n".join(lines), rc
 
 
 def main(argv):

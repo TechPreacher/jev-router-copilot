@@ -29,8 +29,10 @@ confident, handed to `jev-tiny`, `jev-everyday`, `jev-large` or `jev-hardest`. `
 `jev router off` stops routing. The installer never edits your `settings.json`.
 
 Requirements: macOS, Linux or Windows (with PowerShell 7, which Copilot CLI uses for hooks there), Python 3.8+
-(standard library only), GitHub Copilot CLI or VS Code with Copilot, and a TypeSafe API key in `TYPESAFE_API_KEY`,
-the macOS Keychain or the Windows Credential Manager.
+(standard library only), GitHub Copilot CLI or VS Code with Copilot, and a sizing backend: a TypeSafe API key in
+`TYPESAFE_API_KEY`, or a Microsoft Decision-1 deployment in Azure AI Foundry (`JEV_AZURE_ENDPOINT` and
+`JEV_AZURE_DEPLOYMENT`, Entra token via `az login`). Each value may live in the environment, the macOS Keychain or the
+Windows Credential Manager.
 
 ## Pick your models
 
@@ -61,8 +63,9 @@ can use, grouped by the size they fit (GitHub's own lightweight / versatile / po
 
 Built and live-tested on macOS: the hook (Tier 1), the `jevcp` wrapper, per-size model configuration. Built and
 offline-tested only: the MCP fallback (Tier 2), the status line, and Windows support (PowerShell installer, `jevcp.ps1`,
-Credential Manager key, hook `powershell` entry). Not built: a VS Code companion extension.
-69 offline unit tests run in CI on Ubuntu, macOS and Windows.
+Credential Manager key, hook `powershell` entry). The Azure Decision-1 backend answered all four sizes in a live shell
+test, not yet inside a Copilot session. Not built: a VS Code companion extension.
+80 offline unit tests run in CI on Ubuntu, macOS and Windows.
 
 ## Contributing and license
 
