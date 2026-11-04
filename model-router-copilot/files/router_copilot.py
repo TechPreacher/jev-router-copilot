@@ -54,8 +54,9 @@ except Exception:
         sys.exit(0)  # broken install: the message goes through untouched
     raise
 
-if os.environ.get("MODEL_ROUTER_URL"):  # tests point this at a local fake of the Jev API
-    core.URL = os.environ["MODEL_ROUTER_URL"]
+_url = os.environ.get("MODEL_ROUTER_URL") or os.environ.get("JEV_ROUTER_URL")  # tests point this at a local fake
+if _url:
+    core.URL = _url
 
 TAG = "[model-router]"
 OLD_TAG = "[jev-router]"  # notes written before the rename, replayed by --resume

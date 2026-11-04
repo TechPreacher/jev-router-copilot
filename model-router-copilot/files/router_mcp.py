@@ -15,7 +15,7 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-os.environ.setdefault("MODEL_ROUTER_HOME", HERE)
+os.environ.setdefault("MODEL_ROUTER_HOME", os.environ.get("JEV_ROUTER_HOME") or HERE)  # JEV_*: pre-rename name
 sys.path.insert(0, HERE)  # python3 -I leaves the script's own directory off sys.path
 import router_copilot as adapter  # noqa: E402  (imports the unchanged router core, sets the Tier 1 labels)
 

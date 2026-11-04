@@ -91,6 +91,17 @@ class OldNamesTests(unittest.TestCase):
         res = subprocess.run([sys.executable, "-I", ADAPTER, "on"], capture_output=True, text=True, env=env, timeout=30)
         self.assertEqual(res.returncode, 0, res.stderr)
         self.assertTrue(os.path.exists(os.path.join(legacy_home, "state.json")), "state went to JEV_ROUTER_HOME")
+        env["JEV_ROUTER_URL"] = env.pop("MODEL_ROUTER_URL")  # only the old URL override set: the fake must still be hit
+        payload = {"sessionId": "r-2", "prompt": PROMPT, "transformedPrompt": transformed(PROMPT)}
+        before = self.server.hits
+        res = subprocess.run([sys.executable, "-I", ADAPTER, "transform"], input=json.dumps(payload), capture_output=True,
+                             text=True, env=env, timeout=30)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("[model-router] Sized as LARGE", json.loads(res.stdout)["modifiedTransformedPrompt"])
+        self.assertEqual(self.server.hits, before + 1, "JEV_ROUTER_URL still redirects the sizing call")
+        res = subprocess.run([sys.executable, "-I", os.path.join(FILES, "router_statusline.py")], capture_output=True,
+                             text=True, env=env, timeout=30)
+        self.assertTrue(res.stdout.startswith("Router ON"), "the status line reads state from JEV_ROUTER_HOME too")
         self.adapter("on")
         self.assertEqual(self.hook(PROMPT, JEV_ROUTER_PRESIZED="1"), "", "the old PRESIZED name still silences the hook")
         res = self.adapter("status", JEV_AZURE_ENDPOINT="https://x.services.ai.azure.com", JEV_AZURE_DEPLOYMENT="d")
@@ -129,7 +140,8 @@ class MigrationTests(unittest.TestCase):
         with open(os.path.join(old, "state.json"), "w") as f:
             json.dump({"enabled": True, "counts": {"tiny": 2}, "jev_calls": 2, "input_tokens": 80, "errors": 0,
                        "last_error": None, "since": "2026-11-01 09:00"}, f)
-        for rel in ("jev_copilot.py", "jev_compat.py", "bin/jevcp", "bin/jevcp.ps1", "agents/jev-tiny.agent.md.tmpl"):
+        for rel in ("jev_copilot.py", "jev_compat.py", "jev_mcp.py", "bin/jevcp", "bin/jevcp.ps1",
+                    "agents/jev-tiny.agent.md.tmpl"):  # jev_mcp.py: the old install had Tier 2
             with open(os.path.join(old, rel), "w") as f:
                 f.write("old\n")
         for rel in ("hooks/jev-router.json", "hooks/jev-router-session.json", "agents/jev-tiny.agent.md",
@@ -149,8 +161,12 @@ class MigrationTests(unittest.TestCase):
         self.assertIn("\nmodel: claude-sonnet-5.5\n", read(os.path.join(home, "agents", "router-hardest.agent.md")))
         with open(os.path.join(new, "state.json")) as f:
             self.assertTrue(json.load(f)["enabled"], "the on/off switch survived")
-        for rel in ("jev_copilot.py", "jev_compat.py", "bin/jevcp", "bin/jevcp.ps1", "agents/jev-tiny.agent.md.tmpl"):
+        for rel in ("jev_copilot.py", "jev_compat.py", "jev_mcp.py", "bin/jevcp", "bin/jevcp.ps1",
+                    "agents/jev-tiny.agent.md.tmpl"):
             self.assertFalse(os.path.exists(os.path.join(new, rel)), rel)
+        self.assertTrue(os.path.exists(os.path.join(new, "router_mcp.py")), "Tier 2 kept under its new name")
+        self.assertTrue(os.path.exists(os.path.join(home, "hooks", "model-router-session.json")))
+        self.assertIn("Tier 2 installed", out)
         for rel in ("hooks/jev-router.json", "hooks/jev-router-session.json", "agents/jev-tiny.agent.md", "skills/jev-router"):
             self.assertFalse(os.path.exists(os.path.join(home, rel)), rel)
         self.assertTrue(os.path.exists(os.path.join(home, "hooks", "model-router.json")))

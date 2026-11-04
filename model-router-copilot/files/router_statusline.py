@@ -16,7 +16,8 @@ for _stream in (sys.stdout, sys.stderr):  # the arrow in "Router → large" must
     except (AttributeError, ValueError, OSError):
         pass
 
-HOME = os.environ.get("MODEL_ROUTER_HOME") or os.path.dirname(os.path.abspath(__file__))
+HOME = (os.environ.get("MODEL_ROUTER_HOME") or os.environ.get("JEV_ROUTER_HOME")  # JEV_*: pre-rename name
+        or os.path.dirname(os.path.abspath(__file__)))
 SIZES = ("tiny", "everyday", "large", "hardest")
 KEPT = {"self_unsure": "kept (unsure)", "self_followup": "kept (follow-up)",
         "skipped_private": "kept (secret)", "self_error": "kept (sizing error)"}

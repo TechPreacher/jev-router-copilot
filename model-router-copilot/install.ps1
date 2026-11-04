@@ -105,6 +105,9 @@ try {
     $OldJR = Join-Path $CP 'jev-router'
     $Migrated = $false
     if ((Test-Path -LiteralPath $OldJR) -and -not (Test-Path -LiteralPath $JR)) {
+        if ((Test-Path -LiteralPath (Join-Path $OldJR 'jev_mcp.py')) -or (Test-Path -LiteralPath (Join-Path $CP 'hooks\jev-router-session.json'))) {
+            $Tier2 = $true  # the old install had the Tier 2 fallback; keep it under the new names
+        }
         Move-Item -LiteralPath $OldJR -Destination $JR
         foreach ($pattern in @('jev_*.py', 'bin\jevcp', 'bin\jevcp.ps1', 'agents\jev-*.agent.md.tmpl')) {
             Get-ChildItem -Path (Join-Path $JR $pattern) -ErrorAction SilentlyContinue | Remove-Item -Force

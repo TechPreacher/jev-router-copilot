@@ -64,6 +64,9 @@ echo "Installing Model router into $CP"
 OLD_JR="$CP/jev-router"
 MIGRATED=0
 if [ -d "$OLD_JR" ] && [ ! -d "$JR" ]; then
+  if [ -f "$OLD_JR/jev_mcp.py" ] || [ -f "$CP/hooks/jev-router-session.json" ]; then
+    TIER2=1  # the old install had the Tier 2 fallback; keep it under the new names
+  fi
   mv "$OLD_JR" "$JR"
   rm -f "$JR"/jev_*.py "$JR/bin/jevcp" "$JR/bin/jevcp.ps1" "$JR"/agents/jev-*.agent.md.tmpl
   rm -f "$CP/hooks/jev-router.json" "$CP/hooks/jev-router-session.json"
