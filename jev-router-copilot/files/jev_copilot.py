@@ -562,7 +562,9 @@ def key_status():
             rc = 1
     if kind == "azure" and not where("JEV_AZURE_API_KEY"):
         token, expires_on = core.read_token_cache()
-        if token and expires_on > time.time():
+        if os.environ.get("JEV_AZURE_TOKEN"):
+            lines.append("Azure token: JEV_AZURE_TOKEN (environment)")
+        elif token and expires_on > time.time():
             lines.append("Azure token: cached until " + time.strftime("%Y-%m-%d %H:%M", time.localtime(expires_on)))
         elif shutil.which("az"):
             lines.append("Azure token: not cached yet; `jev_copilot.py on` or `router.py azure-token` fetches it")

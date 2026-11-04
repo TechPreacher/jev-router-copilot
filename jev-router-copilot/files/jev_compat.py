@@ -3,8 +3,9 @@
 
 jev_copilot.py calls prepare() before `import router`. Three jobs, each a no-op where it is not needed:
 
-- fcntl: router.py locks state.json with fcntl.flock, which Windows lacks. On Windows a stand-in module is
-  registered under that name, backed by msvcrt.locking on the same lock file.
+- fcntl: router.py locks state.json with fcntl.flock where it exists and falls back to msvcrt itself. The
+  stand-in module registered here (same msvcrt lock) keeps older cores that import fcntl unconditionally
+  working, and lets the tests import the core directly on Windows.
 - Secrets: router.py reads the environment, then the macOS Keychain, for TYPESAFE_API_KEY and the Azure
   backend values (JEV_AZURE_ENDPOINT, JEV_AZURE_DEPLOYMENT, JEV_AZURE_API_KEY). On Windows each can be a
   generic credential of that name in the Credential Manager (stored with cmdkey). They are read with

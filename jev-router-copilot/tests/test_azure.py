@@ -92,6 +92,18 @@ class UnitTests(unittest.TestCase):
             with open(router.AZURE_TOKEN_FILE, "w") as f:
                 f.write("not json")
             self.assertEqual(router.read_token_cache(), (None, 0.0))
+            router.write_token_cache("t1", 1.0)
+            self.assertEqual([n for n in os.listdir(home) if n != "azure-token.json"], [], "no temp files left behind")
+
+    def test_state_lock_works_without_fcntl(self):
+        """The core locks state.json with flock where it exists and msvcrt on Windows; both paths must round-trip."""
+        home = tempfile.mkdtemp(prefix="jev-azure-lock-")
+        self.addCleanup(shutil.rmtree, home, True)
+        with mock.patch.object(router, "HOME", home), mock.patch.object(router, "STATE", os.path.join(home, "state.json")):
+            with router.locked_state() as s:
+                s["enabled"] = True
+            self.assertTrue(router.read_state()["enabled"])
+            self.assertTrue(os.path.exists(os.path.join(home, "state.json.lock")))
 
 
 class AzureHookTests(unittest.TestCase):
@@ -223,6 +235,10 @@ class AzureHookTests(unittest.TestCase):
         res = self.adapter("key", az=False)
         self.assertEqual(res.returncode, 1, res.stdout)
         self.assertIn("az CLI not on PATH", res.stdout)
+        res = self.adapter("key", az=False, JEV_AZURE_TOKEN="env-token-value")
+        self.assertEqual(res.returncode, 0, res.stdout)  # a static token in the environment is a valid setup
+        self.assertIn("Azure token: JEV_AZURE_TOKEN (environment)", res.stdout)
+        self.assertNotIn("env-token-value", res.stdout)
 
     def test_size_mode_waits_for_the_token(self):
         """jevcp's size mode is not the hook: it may call az and wait."""

@@ -14,16 +14,21 @@ both are treated as secrets). Azure auth is an Entra bearer token from `az accou
 cached next to state.json, or an api-key header when JEV_AZURE_API_KEY is set. The hook never waits for
 `az`: it uses the cached token and refreshes it in a detached background process.
 """
-import fcntl
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 from contextlib import contextmanager
+
+try:
+    import fcntl
+except ImportError:  # Windows: msvcrt byte-range locks stand in, see lock_file()
+    fcntl = None
 
 HOME = os.environ.get("JEV_ROUTER_HOME", os.path.expanduser("~/.claude/jev-router"))
 STATE = os.path.join(HOME, "state.json")
@@ -77,11 +82,21 @@ EMPTY = {"enabled": False, "counts": {}, "jev_calls": 0, "input_tokens": 0, "err
          "last_error": None, "since": None}
 
 
+def lock_file(f):
+    """Exclusive lock on an open file, released when it is closed. flock where it exists, msvcrt on Windows."""
+    if fcntl is not None:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        return
+    import msvcrt
+    os.lseek(f.fileno(), 0, os.SEEK_SET)
+    msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)  # retries for about ten seconds, then raises OSError
+
+
 @contextmanager
 def locked_state():
     os.makedirs(HOME, exist_ok=True)
     with open(STATE + ".lock", "w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+        lock_file(lock)
         try:
             with open(STATE) as f:
                 state = {**EMPTY, **json.load(f)}
@@ -205,13 +220,22 @@ def read_token_cache():
 
 
 def write_token_cache(token, expires_on):
-    """Owner-only file, written atomically. The token is a secret; so is this file."""
+    """Owner-only file, written atomically. The token is a secret; so is this file.
+
+    Each writer gets its own temporary file (mkstemp: unique name, mode 600), so a foreground fetch and a
+    background refresh that overlap cannot truncate each other's work; the last os.replace wins.
+    """
     os.makedirs(HOME, exist_ok=True)
-    tmp = AZURE_TOKEN_FILE + ".tmp"
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        json.dump({"token": token, "expires_on": expires_on}, f)
-    os.replace(tmp, AZURE_TOKEN_FILE)
+    fd, tmp = tempfile.mkstemp(prefix=".azure-token-", suffix=".tmp", dir=HOME)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump({"token": token, "expires_on": expires_on}, f)
+        os.replace(tmp, AZURE_TOKEN_FILE)
+    finally:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
 
 
 def fetch_azure_token():
