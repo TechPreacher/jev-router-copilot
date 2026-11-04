@@ -120,12 +120,14 @@ echo
 echo "Self-test passed (hook is silent while OFF, exit 0; status line prints 'Jev OFF')."
 echo "Done. $(head -1 "$STAGE/status.txt")"
 
-if [ -z "${TYPESAFE_API_KEY:-}" ] && ! { [ -x /usr/bin/security ] && /usr/bin/security find-generic-password -s TYPESAFE_API_KEY >/dev/null 2>&1; }; then
+if ! python3 -I "$JR/jev_copilot.py" key > "$STAGE/key.txt" 2>&1; then
+  cat "$STAGE/key.txt"
   cat <<'MSG'
 
-NOTE: no TYPESAFE_API_KEY in this shell and none in the macOS Keychain, so the router cannot size messages.
-Store it once (you are prompted for the value, so it stays out of shell history):
+NOTE: the active backend lacks a credential (see above), so the router cannot size messages. For TypeSafe, store the
+key once (you are prompted for the value, so it stays out of shell history):
     security add-generic-password -U -a "$USER" -s TYPESAFE_API_KEY -w
+For an Azure Decision-1 deployment, store JEV_AZURE_ENDPOINT and JEV_AZURE_DEPLOYMENT the same way and run `az login`.
 MSG
 fi
 

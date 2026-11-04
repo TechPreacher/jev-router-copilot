@@ -3,11 +3,13 @@
 
 jev_copilot.py calls prepare() before `import router`. Three jobs, each a no-op where it is not needed:
 
-- fcntl: router.py locks state.json with fcntl.flock, which Windows lacks. On Windows a stand-in module is
-  registered under that name, backed by msvcrt.locking on the same lock file.
-- TYPESAFE_API_KEY: router.py reads the environment, then the macOS Keychain. On Windows the key can be a
-  generic credential named TYPESAFE_API_KEY in the Credential Manager (stored with cmdkey). It is read with
-  CredReadW and put into the environment of this process only, where get_key() finds it.
+- fcntl: router.py locks state.json with fcntl.flock where it exists and falls back to msvcrt itself. The
+  stand-in module registered here (same msvcrt lock) keeps older cores that import fcntl unconditionally
+  working, and lets the tests import the core directly on Windows.
+- Secrets: router.py reads the environment, then the macOS Keychain, for TYPESAFE_API_KEY and the Azure
+  backend values (JEV_AZURE_ENDPOINT, JEV_AZURE_DEPLOYMENT, JEV_AZURE_API_KEY). On Windows each can be a
+  generic credential of that name in the Credential Manager (stored with cmdkey). They are read with
+  CredReadW and put into the environment of this process only, where router.py finds them.
 - UTF-8 stdio: Copilot sends and expects UTF-8 JSON. Python on Windows would otherwise use the console code
   page, so a prompt with an accent or an arrow would crash the hook or come out mangled.
 
@@ -17,8 +19,10 @@ import os
 import sys
 
 KEY_NAME = "TYPESAFE_API_KEY"
+NAMES = (KEY_NAME, "JEV_AZURE_ENDPOINT", "JEV_AZURE_DEPLOYMENT", "JEV_AZURE_API_KEY")
 CRED_TYPE_GENERIC = 1
-key_source = None  # "environment" or "credential-manager" once load_api_key() found the key
+sources = {}  # name -> "environment" or "credential-manager", for the names load_secrets() found
+key_source = None  # TYPESAFE_API_KEY's source, kept for older callers
 
 
 def utf8_stdio():
@@ -117,20 +121,25 @@ def _decode_blob(blob):
     return None
 
 
-def load_api_key():
-    """Put the Credential Manager key into os.environ when the environment has none (Windows only)."""
+def load_secrets():
+    """Put Credential Manager values into os.environ for the names the environment lacks (Windows only)."""
     global key_source
-    if os.environ.get(KEY_NAME):
-        key_source = "environment"
-        return
-    key = windows_credential(KEY_NAME)
-    if key:
-        os.environ[KEY_NAME] = key
-        key_source = "credential-manager"
+    for name in NAMES:
+        if os.environ.get(name):
+            sources[name] = "environment"
+            continue
+        value = windows_credential(name)
+        if value:
+            os.environ[name] = value
+            sources[name] = "credential-manager"
+    key_source = sources.get(KEY_NAME)
+
+
+load_api_key = load_secrets
 
 
 def prepare():
-    for step in (utf8_stdio, ensure_fcntl, load_api_key):
+    for step in (utf8_stdio, ensure_fcntl, load_secrets):
         try:
             step()
         except Exception:  # a shim must never take the hook down; the core fails open on its own

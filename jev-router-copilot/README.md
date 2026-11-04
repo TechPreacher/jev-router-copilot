@@ -19,8 +19,10 @@ tested offline only. The per-size model configuration passed live in the CLI on 
   what Copilot CLI runs hooks with there (`winget install Microsoft.PowerShell`).
 - GitHub Copilot CLI (`copilot`), or VS Code with the Copilot harness, on an account that has
   `claude-haiku-5.5`, `claude-sonnet-5.5` and `claude-opus-5.5`.
-- A TypeSafe API key in `TYPESAFE_API_KEY` (shell environment), in the macOS Keychain, or in the Windows Credential
-  Manager. The key store is the reliable choice, because VS Code started from the Dock or the Start menu runs hooks
+- A sizing backend: a TypeSafe API key in `TYPESAFE_API_KEY`, or a Microsoft Decision-1 deployment in Azure AI
+  Foundry (`JEV_AZURE_ENDPOINT` + `JEV_AZURE_DEPLOYMENT`, see [Backends](#backends-typesafe-jev-or-azure-decision-1)).
+  Each value lives in the shell environment, the macOS Keychain, or the Windows Credential Manager. The key store is
+  the reliable choice, because VS Code started from the Dock or the Start menu runs hooks
   without your shell environment. Store it once (you are prompted for the value, so it stays out of shell history):
 
   ```bash
@@ -86,6 +88,38 @@ This removes the hook files (Tier 1 and Tier 2), the four helper agents, the ski
 (including `jevcp`, the status line and the MCP server file, and the stats). Entries you pasted into `settings.json` or
 `mcp-config.json` are not touched; the script tells you if it finds them.
 Backups made by the installer are listed, not deleted.
+
+## Backends: TypeSafe Jev or Azure Decision-1
+
+The sizing question can be answered by TypeSafe's hosted Jev (default) or by a
+[Microsoft-Decision-1](https://learn.microsoft.com/azure/foundry/foundry-models/how-to/use-foundry-models-microsoft-decision)
+deployment in your own Azure AI Foundry resource. Both take the same request and return the same answer shape, so
+routing, thresholds and stats are identical. The Azure backend is active as soon as both of these are set:
+
+| Name | Value | Where it may live |
+|---|---|---|
+| `JEV_AZURE_ENDPOINT` | the Foundry resource endpoint, e.g. `https://<resource>.services.ai.azure.com` (with or without `/providers/microsoft`) | environment, Keychain, Credential Manager |
+| `JEV_AZURE_DEPLOYMENT` | the deployment name, e.g. `Decision-1` | same |
+| `JEV_AZURE_API_KEY` | optional: the deployment's API key, sent as an `api-key` header instead of an Entra token | same |
+| `JEV_AZURE_SCOPE` | optional: token scope for `az`, default `https://ai.azure.com/.default` | environment |
+| `JEV_BACKEND` | optional: `typesafe` forces TypeSafe even when the Azure values exist | environment |
+
+Requests go to `<endpoint>/providers/microsoft/v1/systemone` with `model` set to the deployment name. The endpoint and
+the deployment name are treated as secrets: `status` and `key` say which backend is active and where each value was
+found, never the values. Store them like the API key (`security add-generic-password -U -a "$USER" -s JEV_AZURE_ENDPOINT -w`
+on macOS; `cmdkey /generic:JEV_AZURE_ENDPOINT ...` on Windows, same `Read-Host` recipe as above).
+
+**Token.** Without `JEV_AZURE_API_KEY` the router authenticates with a Microsoft Entra bearer token from
+`az account get-access-token` (sign in once with `az login`; the Azure CLI must be on PATH). `az` takes about 2.5 s and
+the hook has 3, so the hook never calls it: it reads a token cached in `~/.copilot/jev-router/azure-token.json`
+(owner-only file, valid about an hour) and, when that is missing or has under ten minutes left, starts a detached
+background refresh and lets the current message through unrouted once (`jev router status` then shows
+`last error: ... Azure token not cached yet`). `jev router on` from a shell, and `jevcp`, fetch the token and wait, so
+the first routed message is not lost; in chat, `jev router on` starts the refresh in the background. Live-tested
+2026-11-04 from a shell against a real deployment (all four sizes answered, 420 to 500 ms; see
+[`spikes/AZURE-live-result.md`](../spikes/AZURE-live-result.md)), not yet inside a Copilot session. Your identity needs
+the `Cognitive Services User` role on the Foundry resource; being Owner of the subscription is not enough (401
+PermissionDenied).
 
 ## Control phrases
 
@@ -300,8 +334,9 @@ Copilot session.
 - **Hooks are Preview**, and the Copilot CLI updates itself. Re-run the spikes (S1 for the CLI, S6 for VS Code) after
   an update and pin the version you test with.
 - **Silent failures.** Copilot does not show hook errors or timeouts. Check `jev router status`, `last error`.
-- **Time budget.** The hook is killed after 3 seconds. Jev gets 1.5 seconds, and a Keychain read gets 1 second, so a
-  slow Keychain can cost a whole message's routing.
+- **Time budget.** The hook is killed after 3 seconds. Jev gets 1.5 seconds, and each Keychain read gets 1 second, so a
+  slow Keychain can cost a whole message's routing. The Azure backend adds up to three Keychain reads (endpoint,
+  deployment, optional API key) when those are not in the environment.
 - **Rewritten prompts persist** in the session history, and are replayed on `--resume`. The note is short and an
   idempotency check stops notes from stacking.
 - **The main model still reads every message** and every helper reply. Savings come from the helper's model
@@ -339,7 +374,10 @@ phrase, the fallback without a catalog). `test_pwsh.py` (8 cases, wherever `pwsh
 file and runs `install.ps1`, `uninstall.ps1` and `jevcp.ps1` the way `test_phase3.py` runs their bash twins.
 `test_compat.py` (7 cases) covers UTF-8 stdio under an ASCII console, the `key` mode, and, on Windows only, the
 `fcntl` stand-in against a second process and a Credential Manager read of a throwaway credential. The bash-only
-cases are skipped on Windows.
+cases are skipped on Windows. `test_azure.py` (10 cases) covers the Azure Decision-1 backend against the fake server
+standing in for a Foundry deployment and a stub `az` on PATH: URL normalisation, backend selection, the owner-only
+token cache, `on` warming the token, the hook's fail-open-then-background-refresh path, the near-expiry refresh, the
+`api-key` header, `size` waiting for the token, and `status` / `key` naming the backend without printing its values.
 
 End to end, with a real Copilot session (this costs credits, so run it deliberately):
 
@@ -384,6 +422,7 @@ jev-router-copilot/
     test_models.py               per-size models, the models listing
     test_pwsh.py                 install.ps1, uninstall.ps1, jevcp.ps1 (needs pwsh)
     test_compat.py               UTF-8 stdio, key mode, Windows lock and Credential Manager shims
+    test_azure.py                Azure Decision-1 backend: token cache, background refresh, headers, status
     fake_jev.py                  local stand-in for api.typesafe.ai (query-string controlled)
 ```
 

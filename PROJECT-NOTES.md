@@ -144,6 +144,23 @@ reports where the key was found. CI gained a `windows-latest` job; `.gitattribut
 on Windows the lock shim against a second process and a cmdkey round trip). Not done: a live Copilot session on
 Windows, and which shell Copilot uses for `statusLine` there.
 
+## Azure Decision-1 backend (2026-11-04, live-tested from a shell the same day)
+
+`router.py` (upstream, copied verbatim) can now size with a Microsoft-Decision-1 deployment in Azure AI Foundry instead
+of TypeSafe's hosted Jev: same request and answer shape, URL `<endpoint>/providers/microsoft/v1/systemone`, `model` =
+deployment name. Active when `JEV_AZURE_ENDPOINT` and `JEV_AZURE_DEPLOYMENT` resolve (environment, then Keychain /
+Credential Manager; both treated as secrets, never printed). Auth: `api-key` header from `JEV_AZURE_API_KEY`, else an
+Entra bearer token from `az account get-access-token --scope https://ai.azure.com/.default`. `az` takes ~2.5 s against
+a 3 s hook, so the hook only reads a cached token (`azure-token.json`, mode 600) and, when it is missing or within ten
+minutes of expiry, spawns `router.py azure-token` detached and lets the message through unrouted once; `on` (shell),
+`size` and `jevcp` wait for the token. `key` reports the backend and each value's source. 80 tests; `test_azure.py`
+uses the fake server as a Foundry deployment and a stub `az` on PATH. Live-tested the same day with the core's hook
+from a shell against a real GlobalStandard deployment (`spikes/AZURE-live-result.md`): all four canned prompts answered
+in 420 to 500 ms, tiny/large/hardest routed, everyday kept at p=0.56 (under the 0.60 threshold). First attempts were
+401 PermissionDenied until the user got `Cognitive Services User` on the resource (Owner on the subscription is control
+plane only; local auth was disabled). Not done: a Copilot session with the Azure backend. The Claude Code side
+(upstream) has no test suite, so its path is covered through this port's tests only.
+
 ## Next step
 
 S1, S3 and S4 done (all pass). S5 is UNVERIFIED: the Claude harness can only be selected in the GUI, so `spikes/S5-result.md` gives a 2-minute manual probe. S6 PASSED: both hooks fire in the VS Code Copilot harness with CLI-identical payloads, `additionalContext` is dropped there (unlike the CLI), and the `userPromptTransformed` rewrite reached the model (reply ended with the injected word, `spikes/S6-result.md`). **Path B (one `~/.copilot` install for CLI and VS Code) is confirmed** and proven end-to-end in both the CLI and the VS Code Copilot harness (`spikes/E2E-cli-result.md`, `spikes/E2E-vscode-result.md`). Only S5 (VS Code Claude harness) remains a manual probe.

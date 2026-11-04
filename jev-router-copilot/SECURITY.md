@@ -2,8 +2,10 @@
 
 ## What leaves the machine
 
-When the router is ON, each sized message is sent to `https://api.typesafe.ai` with your `TYPESAFE_API_KEY`.
-The text sent is the prompt as you typed it (first 6000 characters). Nothing else goes to TypeSafe: the hook
+When the router is ON, each sized message is sent to `https://api.typesafe.ai` with your `TYPESAFE_API_KEY`, or,
+when the Azure backend is configured (`JEV_AZURE_ENDPOINT` and `JEV_AZURE_DEPLOYMENT`), to that Azure AI Foundry
+endpoint of yours with a Microsoft Entra token or `JEV_AZURE_API_KEY`. The text sent is the prompt as you typed it
+(first 6000 characters). Nothing else goes to TypeSafe: the hook
 never sends `transformedPrompt`, so the date, the workspace file listing and other context that Copilot adds
 (VS Code adds a workspace tree) stay on your machine.
 
@@ -25,7 +27,10 @@ prompt for the helper agent, and that prompt goes to the helper's model through 
 - `~/.copilot/jev-router/state.json`: on/off switch, counters, Jev token totals, the last error, and the IDs of
   recent sessions. It never contains message text.
 - `~/.copilot/jev-router/decisions.log`: one JSON line per sized message (route, probability, latency, character
-  count). It never contains message text.
+  count, backend). It never contains message text.
+- `~/.copilot/jev-router/azure-token.json` (Azure backend only): the cached Entra bearer token and its expiry, written
+  owner-only (mode 600, atomic replace). It is a credential valid for about an hour. `uninstall.sh` removes the folder;
+  delete the file yourself if you stop using the Azure backend earlier.
 - Copilot session history, `~/.copilot/session-state/<sessionId>/events.jsonl`: the router rewrites the prompt
   that the model sees, so the rewritten text (the routing note, or the status echo for control phrases) is saved
   there as the user message's transformed content and is replayed on `--resume`. Treat `session-state` as
@@ -49,12 +54,16 @@ the stdin that Copilot sends, never sends network traffic, and prints only the r
 probability. It contains no message text. It is not registered until you add the `statusLine` entry to
 `~/.copilot/settings.json` yourself.
 
-## Your API key
+## Your credentials
 
-The key is read from the `TYPESAFE_API_KEY` environment variable. If that is unset, the router runs
-`/usr/bin/security find-generic-password -w -s TYPESAFE_API_KEY` (macOS Keychain, 1 second timeout). The hook
-process gets the key in memory only; it is not written to any file. The installer never reads, copies, prints
-or stores the key. Store it once, and you are prompted for the value so it stays out of shell history:
+`TYPESAFE_API_KEY`, and for the Azure backend `JEV_AZURE_ENDPOINT`, `JEV_AZURE_DEPLOYMENT` and the optional
+`JEV_AZURE_API_KEY`, are each read from the environment variable of that name. If that is unset, the router runs
+`/usr/bin/security find-generic-password -w -s <NAME>` (macOS Keychain, 1 second timeout each). The hook
+process gets the values in memory only; apart from the Azure token cache above, nothing is written to any file. The
+installer never reads, copies, prints or stores them; `status` and `key` name the backend and the source of each value,
+never the value. The Azure endpoint and deployment name are handled as secrets on purpose. Without `JEV_AZURE_API_KEY`
+the router runs `az account get-access-token` with your Azure CLI login, outside the hook only. Store a value once,
+and you are prompted for it so it stays out of shell history:
 
     security add-generic-password -U -a "$USER" -s TYPESAFE_API_KEY -w
 

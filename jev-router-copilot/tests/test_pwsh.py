@@ -144,7 +144,8 @@ class InstallerTests(unittest.TestCase):
         env = {k: v for k, v in self.env.items() if k != "TYPESAFE_API_KEY"}
         res = pwsh(INSTALL, env=env)
         self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
-        self.assertIn("NOTE: no TYPESAFE_API_KEY in this shell", res.stdout)
+        self.assertIn("NOTE: the active backend lacks a credential", res.stdout)
+        self.assertIn("TYPESAFE_API_KEY: missing", res.stdout)
         self.assertIn("Credential Manager" if os.name == "nt" else "Keychain", res.stdout)
 
 
