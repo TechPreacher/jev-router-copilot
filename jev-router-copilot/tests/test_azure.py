@@ -21,15 +21,20 @@ ROUTER = os.path.join(FILES, "router.py")
 sys.path.insert(0, TESTS)
 sys.path.insert(0, FILES)
 import fake_jev  # noqa: E402
+import jev_compat  # noqa: E402
+
+jev_compat.ensure_fcntl()  # the core imports fcntl at the top; on Windows the adapter's shim stands in
 # router reads JEV_ROUTER_HOME at import; point it at a scratch dir for the unit tests without leaving the
 # variable in this process (other test modules build subprocess environments from os.environ).
 _prev_home = os.environ.get("JEV_ROUTER_HOME")
 os.environ["JEV_ROUTER_HOME"] = tempfile.mkdtemp(prefix="jev-azure-unit-")
-import router  # noqa: E402
-if _prev_home is None:
-    del os.environ["JEV_ROUTER_HOME"]
-else:
-    os.environ["JEV_ROUTER_HOME"] = _prev_home
+try:
+    import router  # noqa: E402
+finally:
+    if _prev_home is None:
+        del os.environ["JEV_ROUTER_HOME"]
+    else:
+        os.environ["JEV_ROUTER_HOME"] = _prev_home
 from test_adapter import transformed  # noqa: E402
 
 PROMPT = "Research the main options for migrating our reporting from Postgres to ClickHouse and write a report."
